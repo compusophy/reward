@@ -78,7 +78,9 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   return (
     <div className="w-full min-h-screen bg-black text-white lowercase font-mono flex flex-col">
       <span style={{ display: 'none' }}>{title}</span>
-      <div className="flex justify-between items-center h-[72px] px-4 border-b border-zinc-800">
+      
+      {/* Header */}
+      <div className="flex justify-between items-center h-[60px] px-4 mb-5">
         <div className="flex items-center">
           <Image
             src="/freecast-logo.png"
@@ -143,33 +145,27 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         </div>
       </div>
 
-      <div className="flex flex-col items-center justify-center w-full">
+      {/* Main content area */}
+      <div className="flex flex-col items-center w-full gap-5">
         {/* ETH Asset Selection */}
-        <div className="flex flex-col items-center w-full h-[72px]">
-          <div className="flex justify-center h-full items-center">
+        <div className="flex flex-col items-center w-full">
+          <div className="flex items-center justify-center w-full max-w-[500px] px-4">
             <button
               onClick={() => setSelectedAsset('ETH')}
-              className={`min-w-[100px] px-4 py-1.5 rounded-md border border-zinc-800 text-gray-400 transition-colors font-mono lowercase ${
-                selectedAsset === 'ETH' 
-                  ? 'bg-zinc-800' 
-                  : 'hover:bg-zinc-800/50'
-              }`}
+              className="w-full h-[40px] px-4 rounded-md border border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase bg-zinc-800"
             >
               ⟠ eth
             </button>
           </div>
-          <div className="w-full h-px bg-zinc-800" />
         </div>
 
         {/* Trading Buttons */}
-        <div className="flex flex-col items-center w-full h-[72px]">
-          <div className="flex justify-center gap-4 h-full items-center">
+        <div className="flex flex-col items-center w-full">
+          <div className="grid grid-cols-2 h-full w-full max-w-[500px] px-4">
             <button 
               onClick={() => setSelectedPosition('long')}
-              className={`min-w-[100px] flex items-center justify-center gap-2 px-4 py-1.5 rounded-md border border-zinc-800 text-gray-400 transition-colors font-mono lowercase ${
-                selectedPosition === 'long' 
-                  ? 'bg-zinc-800' 
-                  : 'hover:bg-zinc-800/50'
+              className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-l-md border border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase ${
+                selectedPosition === 'long' ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
               }`}
             >
               <span className="flex items-center">
@@ -186,10 +182,8 @@ export default function Demo({ title }: DemoProps): JSX.Element {
             
             <button 
               onClick={() => setSelectedPosition('short')}
-              className={`min-w-[100px] flex items-center justify-center gap-2 px-4 py-1.5 rounded-md border border-zinc-800 text-gray-400 transition-colors font-mono lowercase ${
-                selectedPosition === 'short' 
-                  ? 'bg-zinc-800' 
-                  : 'hover:bg-zinc-800/50'
+              className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-r-md border-t border-r border-b border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase ${
+                selectedPosition === 'short' ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
               }`}
             >
               <span className="flex items-center" style={{ transform: 'scale(-1, 1) rotate(180deg)' }}>
@@ -204,13 +198,12 @@ export default function Demo({ title }: DemoProps): JSX.Element {
               short
             </button>
           </div>
-          <div className="w-full h-px bg-zinc-800" />
         </div>
 
         {/* Amount Input */}
-        <div className="flex flex-col items-center w-full h-[72px]">
-          <div className="flex justify-center h-full items-center">
-            <div className="relative flex items-center w-[200px]">
+        <div className="flex flex-col items-center w-full">
+          <div className="flex items-center justify-center w-full max-w-[500px] px-4">
+            <div className="relative flex items-center w-full">
               <input
                 type="number"
                 inputMode="numeric"
@@ -218,50 +211,50 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                 pattern="\d*"
                 placeholder="0"
                 onChange={(e) => setInputAmount(e.target.value ? Number(e.target.value) : null)}
-                className="w-full px-4 py-1.5 rounded-md border border-zinc-800 bg-transparent text-gray-400 font-mono lowercase focus:outline-none focus:border-zinc-700 text-left"
+                className="w-full h-[40px] px-4 rounded-md border border-zinc-800 bg-transparent text-gray-400 font-mono text-sm lowercase focus:outline-none focus:border-zinc-700 text-left"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.currentTarget.blur();
                   }
                 }}
               />
-              <span className="absolute right-3 text-gray-400 pointer-events-none">
+              <span className="absolute right-3 text-gray-400 pointer-events-none text-sm">
                 $reward
               </span>
             </div>
           </div>
-          <div className="w-full h-px bg-zinc-800" />
         </div>
 
         {/* Leverage Selection */}
-        <div className="flex flex-col items-center w-full h-[72px]">
-          <div className="flex justify-center gap-4 h-full items-center">
-            {[2, 5, 10, 50].map((value) => (
+        <div className="flex flex-col items-center w-full">
+          <div className="flex items-center w-full max-w-[500px] px-4">
+            {[2, 5, 10, 50].map((value, index) => (
               <button
                 key={value}
                 onClick={() => setLeverage(value)}
-                className={`w-[72px] px-3 py-1.5 rounded-md border border-zinc-800 text-gray-400 transition-colors font-mono lowercase ${
-                  leverage === value 
-                    ? 'bg-zinc-800' 
-                    : 'hover:bg-zinc-800/50'
-                }`}
+                className={`
+                  w-full h-[40px] px-1 sm:px-2 border-t border-b border-zinc-800 
+                  ${index === 0 ? 'rounded-l-md border-l' : ''}
+                  ${index === 3 ? 'rounded-r-md border-r' : 'border-r'}
+                  text-gray-400 transition-colors font-mono text-sm lowercase
+                  ${leverage === value ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'}
+                `}
               >
                 {value}x
               </button>
             ))}
           </div>
-          <div className="w-full h-px bg-zinc-800" />
         </div>
 
         {/* Order Summary */}
-        <div className="flex flex-col items-center w-full h-[72px]">
-          <div className="flex justify-center h-full items-center">
-            <div className="flex flex-col gap-1 text-gray-400 font-mono text-sm">
-              <div className="flex justify-between" style={{ minWidth: '200px' }}>
+        <div className="flex flex-col items-center w-full">
+          <div className="flex items-center justify-center w-full max-w-[500px] px-4">
+            <div className="flex flex-col gap-2 text-gray-400 font-mono text-sm w-full">
+              <div className="flex justify-between">
                 <span>entry price:</span>
                 <span>${ethPrice.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between" style={{ minWidth: '200px' }}>
+              <div className="flex justify-between">
                 <span>liq. price:</span>
                 <span>{
                   selectedPosition && leverage 
@@ -271,19 +264,18 @@ export default function Demo({ title }: DemoProps): JSX.Element {
               </div>
             </div>
           </div>
-          <div className="w-full h-px bg-zinc-800" />
         </div>
 
         {/* Place Order Button */}
-        <div className="flex flex-col items-center w-full h-[72px]">
-          <div className="flex justify-center h-full items-center">
+        <div className="flex flex-col items-center w-full">
+          <div className="flex items-center justify-center w-full max-w-[500px] px-4">
             <button
               className={`
-                px-4 py-1.5 rounded-md border transition-all duration-150
-                min-w-[200px] font-mono lowercase
+                w-full h-[40px] px-4 rounded-md border transition-all duration-150
+                font-mono text-sm lowercase
                 ${isAllSelected() 
                   ? 'border-zinc-400 text-black bg-white hover:bg-zinc-100 active:scale-[0.98]' 
-                  : 'border-zinc-800 text-zinc-400 bg-black hover:bg-zinc-900'
+                  : 'border-zinc-800 text-gray-400 bg-black hover:bg-zinc-900'
                 }
                 active:border-white focus:outline-none
               `}
@@ -291,14 +283,13 @@ export default function Demo({ title }: DemoProps): JSX.Element {
               place order
             </button>
           </div>
-          
         </div>
       </div>
 
       {/* Footer */}
-      <div className="w-full h-[72px] border-t border-zinc-800">
-        <div className="flex justify-center items-center h-full">
-          <div className="text-gray-400 font-mono">
+      <div className="w-full mt-5">
+        <div className="flex justify-center items-center h-[72px] w-1/2 max-w-[500px] px-4 mx-auto">
+          <div className="text-gray-400 font-mono text-sm">
             balance: {balance} $reward
           </div>
         </div>
