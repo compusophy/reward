@@ -1,5 +1,6 @@
 import { Metadata } from "next";
-import App from "~/app/app";
+import React from 'react';
+import App from '../../../app';
 
 const appUrl = process.env.NEXT_PUBLIC_URL;
 
@@ -16,13 +17,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     version: "next",
     imageUrl: `${appUrl}/frames/hello/${name}/opengraph-image`,
     button: {
-      title: "Launch Frame",
+      title: "launch app",
       action: {
         type: "launch_frame",
-        name: "Farcaster Frames v2 Demo",
+        name: "reward.wtf",
         url: `${appUrl}/frames/hello/${name}/`,
         splashImageUrl: `${appUrl}/splash.png`,
-        splashBackgroundColor: "#f7f7f7",
+        splashBackgroundColor: "#000000",
       },
     },
   };
