@@ -11,11 +11,13 @@ export const contentType = "image/png";
 export default async function OGImage() {
   return new ImageResponse(
     (
-      <div tw="h-full w-full flex flex-col justify-center items-center relative bg-black">
-      
-        <div tw="flex items-center">
-          <h1 tw="text-6xl text-white font-mono lowercase">reward.wtf</h1>
-        </div>
+      <div tw="h-full w-full flex items-center justify-center bg-black">
+        <img
+          src="https://reward.wtf/icon.png"
+          width="80"
+          height="80"
+          alt="reward.wtf"
+        />
       </div>
     ),
     {

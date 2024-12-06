@@ -23,11 +23,12 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const [context, setContext] = useState<FrameContext>();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [ethPrice, setEthPrice] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const balance = "10M"; // This should come from your actual balance logic
+  const ethPrice = 3500; // Hardcoded ETH price
+  const balance = "100,000"; // This should come from your actual balance logic
   const [leverage, setLeverage] = useState<number | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<'long' | 'short' | null>(null);
+  const [selectedAsset, setSelectedAsset] = useState('ETH')
+  const [inputAmount, setInputAmount] = useState<number | null>(null);
 
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
@@ -48,24 +49,23 @@ export default function Demo({ title }: DemoProps): JSX.Element {
     }
   }, [isSDKLoaded]);
 
-  useEffect(() => {
-    const fetchEthPrice = async () => {
-      try {
-        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
-        const data = await response.json();
-        setEthPrice(data.ethereum.usd);
-      } catch (error) {
-        console.error('Failed to fetch ETH price:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const isAllSelected = () => {
+    return selectedPosition !== null && 
+           leverage !== null && 
+           selectedAsset !== null && 
+           inputAmount !== null && 
+           inputAmount > 0;
+  };
 
-    fetchEthPrice();
-    const interval = setInterval(fetchEthPrice, 30000); // Update every 30 seconds
-
-    return () => clearInterval(interval);
-  }, []);
+  const calculateLiquidationPrice = () => {
+    if (!selectedPosition || !leverage) return null;
+    
+    if (selectedPosition === 'long') {
+      return ethPrice * (1 - 1/leverage);
+    } else {
+      return ethPrice * (1 + 1/leverage);
+    }
+  };
 
   if (!isSDKLoaded) {
     return (
@@ -76,7 +76,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   }
 
   return (
-    <div className="w-full min-h-screen bg-black text-white lowercase font-mono">
+    <div className="w-full min-h-screen bg-black text-white lowercase font-mono flex flex-col">
       <span style={{ display: 'none' }}>{title}</span>
       <div className="flex justify-between items-center h-[72px] px-4 border-b border-zinc-800">
         <div className="flex items-center">
@@ -144,6 +144,23 @@ export default function Demo({ title }: DemoProps): JSX.Element {
       </div>
 
       <div className="flex flex-col items-center justify-center w-full">
+        {/* ETH Asset Selection */}
+        <div className="flex flex-col items-center w-full h-[72px]">
+          <div className="flex justify-center h-full items-center">
+            <button
+              onClick={() => setSelectedAsset('ETH')}
+              className={`min-w-[100px] px-4 py-1.5 rounded-md border border-zinc-800 text-gray-400 transition-colors font-mono lowercase ${
+                selectedAsset === 'ETH' 
+                  ? 'bg-zinc-800' 
+                  : 'hover:bg-zinc-800/50'
+              }`}
+            >
+              ⟠ eth
+            </button>
+          </div>
+          <div className="w-full h-px bg-zinc-800" />
+        </div>
+
         {/* Trading Buttons */}
         <div className="flex flex-col items-center w-full h-[72px]">
           <div className="flex justify-center gap-4 h-full items-center">
@@ -200,6 +217,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                 step="1"
                 pattern="\d*"
                 placeholder="0"
+                onChange={(e) => setInputAmount(e.target.value ? Number(e.target.value) : null)}
                 className="w-full px-4 py-1.5 rounded-md border border-zinc-800 bg-transparent text-gray-400 font-mono lowercase focus:outline-none focus:border-zinc-700 text-left"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -218,11 +236,11 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         {/* Leverage Selection */}
         <div className="flex flex-col items-center w-full h-[72px]">
           <div className="flex justify-center gap-4 h-full items-center">
-            {[1, 10, 100].map((value) => (
+            {[2, 5, 10, 50].map((value) => (
               <button
                 key={value}
                 onClick={() => setLeverage(value)}
-                className={`px-4 py-1.5 rounded-md border border-zinc-800 text-gray-400 transition-colors font-mono lowercase ${
+                className={`w-[72px] px-3 py-1.5 rounded-md border border-zinc-800 text-gray-400 transition-colors font-mono lowercase ${
                   leverage === value 
                     ? 'bg-zinc-800' 
                     : 'hover:bg-zinc-800/50'
@@ -235,22 +253,54 @@ export default function Demo({ title }: DemoProps): JSX.Element {
           <div className="w-full h-px bg-zinc-800" />
         </div>
 
-        {/* Place Order Button */}
+        {/* Order Summary */}
         <div className="flex flex-col items-center w-full h-[72px]">
           <div className="flex justify-center h-full items-center">
-            <button
-              className="px-4 py-1.5 rounded-md border border-zinc-800 text-gray-400 font-mono lowercase bg-zinc-800/30 min-w-[200px]"
-            >
-              place order
-            </button>
+            <div className="flex flex-col gap-1 text-gray-400 font-mono text-sm">
+              <div className="flex justify-between" style={{ minWidth: '200px' }}>
+                <span>entry price:</span>
+                <span>${ethPrice.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between" style={{ minWidth: '200px' }}>
+                <span>liq. price:</span>
+                <span>{
+                  selectedPosition && leverage 
+                    ? `$${Math.round(calculateLiquidationPrice() || 0).toLocaleString()}`
+                    : '---'
+                }</span>
+              </div>
+            </div>
           </div>
           <div className="w-full h-px bg-zinc-800" />
         </div>
 
-        {/* Balance and Price Display */}
-        <div className="flex flex-col justify-center h-[72px] w-full text-gray-400 text-center">
-          <div>balance: {balance} $reward</div>
-          <div>{isLoading ? 'loading...' : `$${ethPrice?.toLocaleString()}`}</div>
+        {/* Place Order Button */}
+        <div className="flex flex-col items-center w-full h-[72px]">
+          <div className="flex justify-center h-full items-center">
+            <button
+              className={`
+                px-4 py-1.5 rounded-md border transition-all duration-150
+                min-w-[200px] font-mono lowercase
+                ${isAllSelected() 
+                  ? 'border-zinc-400 text-black bg-white hover:bg-zinc-100 active:scale-[0.98]' 
+                  : 'border-zinc-800 text-zinc-400 bg-black hover:bg-zinc-900'
+                }
+                active:border-white focus:outline-none
+              `}
+            >
+              place order
+            </button>
+          </div>
+          
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="w-full h-[72px] border-t border-zinc-800">
+        <div className="flex justify-center items-center h-full">
+          <div className="text-gray-400 font-mono">
+            balance: {balance} $reward
+          </div>
         </div>
       </div>
     </div>
