@@ -9,6 +9,8 @@ import {
 } from "wagmi";
 import { config } from "~/components/providers/WagmiProvider";
 import Image from 'next/image';
+import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 
 const imageConfig = {
   unoptimized: true,
@@ -33,6 +35,11 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { connect } = useConnect();
+
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const isTradeRoute = pathname === "/";
 
   const toggleProfileDropdown = useCallback(() => {
     setIsProfileDropdownOpen((prev) => !prev);
@@ -80,73 +87,89 @@ export default function Demo({ title }: DemoProps): JSX.Element {
       <span style={{ display: 'none' }}>{title}</span>
       
       {/* Header */}
-      <div className="flex justify-between items-center h-[60px] px-4 mb-5">
-        <div className="flex items-center">
-          <Image
-            src="/freecast-logo.png"
-            alt="Freecast Logo"
-            width={40}
-            height={40}
-            className="rounded-full bg-black active:opacity-80"
-            {...imageConfig}
-          />
+      <div className="flex flex-col">
+        <div className="relative flex justify-between items-center h-[60px] w-full max-w-[500px] mx-auto px-4">
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/freecast-logo.png"
+              alt="Freecast Logo"
+              width={40}
+              height={40}
+              className="rounded-full bg-black active:opacity-80"
+              {...imageConfig}
+            />
+          </Link>
+          
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <button 
+              onClick={() => router.push("/")}
+              className={`h-[40px] px-4 rounded-md border transition-colors font-mono text-sm lowercase ${
+                isTradeRoute 
+                  ? "border-zinc-400 text-black bg-white hover:bg-zinc-100"
+                  : "border-zinc-800 text-gray-400 bg-black hover:bg-zinc-900"
+              }`}
+            >
+              trade
+            </button>
+          </div>
+
+          <div className="relative flex items-center">
+            {context?.user?.pfpUrl && (
+              <>
+                <button
+                  onClick={toggleProfileDropdown}
+                  className="rounded-full bg-black flex items-center"
+                >
+                  <Image
+                    src={context.user.pfpUrl}
+                    alt="Profile"
+                    width={40}
+                    height={40}
+                    className="rounded-full"
+                    {...imageConfig}
+                  />
+                </button>
+                
+                {isProfileDropdownOpen && (
+                  <div className="absolute top-full right-0 mt-2.5 min-w-[140px] bg-black rounded-lg border border-zinc-800 shadow-lg py-5 flex flex-col gap-5 z-10">
+                    {context?.user?.username && (
+                      <div className="px-4 h-[40px] flex items-center justify-center text-sm text-gray-300">
+                        @{context.user.username.toLowerCase()}
+                      </div>
+                    )}
+                    {address && (
+                      <div className="px-4 h-[40px] flex items-center justify-center text-sm text-gray-300">
+                        {`${address.slice(0, 6)}...${address.slice(-4)}`.toLowerCase()}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (isConnected) {
+                          disconnect();
+                        } else {
+                          connect({ connector: config.connectors[0] });
+                        }
+                        setIsProfileDropdownOpen(false);
+                      }}
+                      className={`mx-3 h-[40px] flex items-center justify-center text-sm rounded-md border transition-colors ${
+                        isConnected 
+                          ? 'border-red-500/50 text-red-400 hover:bg-red-500/10' 
+                          : 'border-green-500/50 text-green-400 hover:bg-green-500/10'
+                      }`}
+                    >
+                      {isConnected ? 'disconnect' : 'connect'}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
-        
-        <div className="relative flex items-center">
-          {context?.user?.pfpUrl && (
-            <>
-              <button
-                onClick={toggleProfileDropdown}
-                className="rounded-full bg-black flex items-center"
-              >
-                <Image
-                  src={context.user.pfpUrl}
-                  alt="Profile"
-                  width={40}
-                  height={40}
-                  className="rounded-full"
-                  {...imageConfig}
-                />
-              </button>
-              
-              {isProfileDropdownOpen && (
-                <div className="absolute top-full right-0 mt-2 min-w-[140px] bg-black rounded-lg shadow-lg py-3 flex flex-col gap-3">
-                  {context?.user?.username && (
-                    <div className="px-4 text-sm text-gray-300 text-center">
-                      @{context.user.username.toLowerCase()}
-                    </div>
-                  )}
-                  {address && (
-                    <div className="px-4 text-sm text-gray-300 text-center">
-                      {`${address.slice(0, 6)}...${address.slice(-4)}`.toLowerCase()}
-                    </div>
-                  )}
-                  <button
-                    onClick={() => {
-                      if (isConnected) {
-                        disconnect();
-                      } else {
-                        connect({ connector: config.connectors[0] });
-                      }
-                      setIsProfileDropdownOpen(false);
-                    }}
-                    className={`mx-3 px-4 py-1.5 text-sm rounded-md border transition-colors ${
-                      isConnected 
-                        ? 'border-red-500/50 text-red-400 hover:bg-red-500/10' 
-                        : 'border-green-500/50 text-green-400 hover:bg-green-500/10'
-                    }`}
-                  >
-                    {isConnected ? 'disconnect' : 'connect'}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <div className="w-full h-px bg-zinc-800" />
       </div>
 
       {/* Main content area */}
-      <div className="flex flex-col items-center w-full gap-5">
+      <div className="flex flex-col items-center w-full gap-5 mt-5">
         {/* ETH Asset Selection */}
         <div className="flex flex-col items-center w-full">
           <div className="flex items-center justify-center w-full max-w-[500px] px-4">
@@ -161,7 +184,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
 
         {/* Trading Buttons */}
         <div className="flex flex-col items-center w-full">
-          <div className="grid grid-cols-2 h-full w-full max-w-[500px] px-4">
+          <div className="grid grid-cols-2 w-full max-w-[500px] px-4">
             <button 
               onClick={() => setSelectedPosition('long')}
               className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-l-md border border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase ${
@@ -288,6 +311,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
 
       {/* Footer */}
       <div className="w-full mt-5">
+        <div className="w-full h-px bg-zinc-800" />
         <div className="flex justify-center items-center h-[72px] w-1/2 max-w-[500px] px-4 mx-auto">
           <div className="text-gray-400 font-mono text-sm">
             balance: {balance} $reward
