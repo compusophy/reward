@@ -88,17 +88,19 @@ export default function Demo({ title }: DemoProps): JSX.Element {
       
       {/* Header */}
       <div className="flex flex-col">
-        <div className="relative flex justify-between items-center h-[60px] w-full max-w-[500px] mx-auto px-4">
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/freecast-logo.png"
-              alt="Freecast Logo"
-              width={40}
-              height={40}
-              className="rounded-full bg-black active:opacity-80"
-              {...imageConfig}
-            />
-          </Link>
+        <div className="relative flex justify-between h-[80px] w-full max-w-[500px] mx-auto px-4">
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/icon.png"
+                alt="Freecast Logo"
+                width={40}
+                height={40}
+                className="rounded-full bg-black active:opacity-80"
+                {...imageConfig}
+              />
+            </Link>
+          </div>
           
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <button 
@@ -113,7 +115,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
             </button>
           </div>
 
-          <div className="relative flex items-center">
+          <div className="flex items-center">
             {context?.user?.pfpUrl && (
               <>
                 <button
@@ -173,53 +175,57 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         {/* ETH Asset Selection */}
         <div className="flex flex-col items-center w-full">
           <div className="flex items-center justify-center w-full max-w-[500px] px-4">
-            <button
-              onClick={() => setSelectedAsset('ETH')}
-              className="w-full h-[40px] px-4 rounded-md border border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase bg-zinc-800"
-            >
-              ⟠ eth
-            </button>
+            <div className="w-full">
+              <button
+                onClick={() => setSelectedAsset('ETH')}
+                className="w-full h-[40px] px-4 rounded-md border border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase bg-zinc-800"
+              >
+                ⟠ eth
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Trading Buttons */}
         <div className="flex flex-col items-center w-full">
-          <div className="grid grid-cols-2 w-full max-w-[500px] px-4">
-            <button 
-              onClick={() => setSelectedPosition('long')}
-              className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-l-md border border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase ${
-                selectedPosition === 'long' ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
-              }`}
-            >
-              <span className="flex items-center">
-                <svg height="9.856" viewBox="0 0 15.704 9.856" width="15.704" xmlns="http://www.w3.org/2000/svg">
-                  <path 
-                    d="m529-488.59v5.67l-2.113-2.109-5.326 5.319-2.924-2.921-3.9 3.9-1.444-1.448 5.341-5.341 2.924 2.924 3.882-3.882-2.113-2.109z" 
-                    fill="currentColor" 
-                    transform="translate(-513.3 488.59)"
-                  />
-                </svg>
-              </span>
-              long
-            </button>
-            
-            <button 
-              onClick={() => setSelectedPosition('short')}
-              className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-r-md border-t border-r border-b border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase ${
-                selectedPosition === 'short' ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
-              }`}
-            >
-              <span className="flex items-center" style={{ transform: 'scale(-1, 1) rotate(180deg)' }}>
-                <svg height="9.856" viewBox="0 0 15.704 9.856" width="15.704" xmlns="http://www.w3.org/2000/svg">
-                  <path 
-                    d="m529-488.59v5.67l-2.113-2.109-5.326 5.319-2.924-2.921-3.9 3.9-1.444-1.448 5.341-5.341 2.924 2.924 3.882-3.882-2.113-2.109z" 
-                    fill="currentColor" 
-                    transform="translate(-513.3 488.59)"
-                  />
-                </svg>
-              </span>
-              short
-            </button>
+          <div className="flex items-center justify-center w-full max-w-[500px] px-4">
+            <div className="w-full grid grid-cols-2">
+              <button 
+                onClick={() => setSelectedPosition('long')}
+                className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-l-md border border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase ${
+                  selectedPosition === 'long' ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
+                }`}
+              >
+                <span className="flex items-center">
+                  <svg height="9.856" viewBox="0 0 15.704 9.856" width="15.704" xmlns="http://www.w3.org/2000/svg">
+                    <path 
+                      d="m529-488.59v5.67l-2.113-2.109-5.326 5.319-2.924-2.921-3.9 3.9-1.444-1.448 5.341-5.341 2.924 2.924 3.882-3.882-2.113-2.109z" 
+                      fill="currentColor" 
+                      transform="translate(-513.3 488.59)"
+                    />
+                  </svg>
+                </span>
+                long
+              </button>
+              
+              <button 
+                onClick={() => setSelectedPosition('short')}
+                className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-r-md border-t border-r border-b border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase ${
+                  selectedPosition === 'short' ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
+                }`}
+              >
+                <span className="flex items-center" style={{ transform: 'scale(-1, 1) rotate(180deg)' }}>
+                  <svg height="9.856" viewBox="0 0 15.704 9.856" width="15.704" xmlns="http://www.w3.org/2000/svg">
+                    <path 
+                      d="m529-488.59v5.67l-2.113-2.109-5.326 5.319-2.924-2.921-3.9 3.9-1.444-1.448 5.341-5.341 2.924 2.924 3.882-3.882-2.113-2.109z" 
+                      fill="currentColor" 
+                      transform="translate(-513.3 488.59)"
+                    />
+                  </svg>
+                </span>
+                short
+              </button>
+            </div>
           </div>
         </div>
 
@@ -250,22 +256,24 @@ export default function Demo({ title }: DemoProps): JSX.Element {
 
         {/* Leverage Selection */}
         <div className="flex flex-col items-center w-full">
-          <div className="flex items-center w-full max-w-[500px] px-4">
-            {[2, 5, 10, 50].map((value, index) => (
-              <button
-                key={value}
-                onClick={() => setLeverage(value)}
-                className={`
-                  w-full h-[40px] px-1 sm:px-2 border-t border-b border-zinc-800 
-                  ${index === 0 ? 'rounded-l-md border-l' : ''}
-                  ${index === 3 ? 'rounded-r-md border-r' : 'border-r'}
-                  text-gray-400 transition-colors font-mono text-sm lowercase
-                  ${leverage === value ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'}
-                `}
-              >
-                {value}x
-              </button>
-            ))}
+          <div className="flex items-center justify-center w-full max-w-[500px] px-4">
+            <div className="w-full flex">
+              {[2, 5, 10, 50].map((value, index) => (
+                <button
+                  key={value}
+                  onClick={() => setLeverage(value)}
+                  className={`
+                    w-full h-[40px] px-1 sm:px-2 border-t border-b border-zinc-800 
+                    ${index === 0 ? 'rounded-l-md border-l' : ''}
+                    ${index === 3 ? 'rounded-r-md border-r' : 'border-r'}
+                    text-gray-400 transition-colors font-mono text-sm lowercase
+                    ${leverage === value ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'}
+                  `}
+                >
+                  {value}x
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -292,19 +300,21 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         {/* Place Order Button */}
         <div className="flex flex-col items-center w-full">
           <div className="flex items-center justify-center w-full max-w-[500px] px-4">
-            <button
-              className={`
-                w-full h-[40px] px-4 rounded-md border transition-all duration-150
-                font-mono text-sm lowercase
-                ${isAllSelected() 
-                  ? 'border-zinc-400 text-black bg-white hover:bg-zinc-100 active:scale-[0.98]' 
-                  : 'border-zinc-800 text-gray-400 bg-black hover:bg-zinc-900'
-                }
-                active:border-white focus:outline-none
-              `}
-            >
-              place order
-            </button>
+            <div className="w-full">
+              <button
+                className={`
+                  w-full h-[40px] px-4 rounded-md border transition-all duration-150
+                  font-mono text-sm lowercase
+                  ${isAllSelected() 
+                    ? 'border-zinc-400 text-black bg-white hover:bg-zinc-100 active:scale-[0.98]' 
+                    : 'border-zinc-800 text-gray-400 bg-black hover:bg-zinc-900'
+                  }
+                  active:border-white focus:outline-none
+                `}
+              >
+                place order
+              </button>
+            </div>
           </div>
         </div>
       </div>
