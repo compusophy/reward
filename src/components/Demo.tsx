@@ -101,10 +101,10 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   };
 
   // Add a new state to control the current view
-  const [currentView, setCurrentView] = useState<'trade' | 'leaderboard' | 'home'>('trade');
+  const [currentView, setCurrentView] = useState<'trade' | 'leaderboard' | 'info'>('trade');
 
   // Modify the router.push calls to use setState instead
-  const navigateTo = (view: 'trade' | 'leaderboard' | 'home') => {
+  const navigateTo = (view: 'trade' | 'leaderboard' | 'info') => {
     setCurrentView(view);
     // Always use the view name in URL
     window.history.pushState({}, '', `/${view}`);
@@ -117,8 +117,8 @@ export default function Demo({ title }: DemoProps): JSX.Element {
     const path = window.location.pathname;
     if (path === '/leaderboard') {
       setCurrentView('leaderboard');
-    } else if (path === '/home') {
-      setCurrentView('home');
+    } else if (path === '/info') {
+      setCurrentView('info');
     } else if (path === '/trade' || path === '/') {
       setCurrentView('trade');
       // If we're at the root URL (/), update it to /trade
@@ -129,9 +129,9 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   }, []);
 
   // Pre-load the content for different views
-  const homeContent = (
+  const infoContent = (
     <div className="flex items-center justify-center flex-1">
-      <span className="text-gray-400 font-mono">home</span>
+      <span className="text-gray-400 font-mono">info</span>
     </div>
   );
 
@@ -332,8 +332,8 @@ export default function Demo({ title }: DemoProps): JSX.Element {
 
   // Main content conditional rendering
   const renderContent = () => {
-    if (currentView === 'home') {
-      return homeContent;
+    if (currentView === 'info') {
+      return infoContent;
     }
 
     if (currentView === 'leaderboard') {
@@ -360,13 +360,13 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         <div className="relative flex justify-between h-[80px] w-full max-w-[500px] mx-auto px-4">
           <div className="flex items-center">
             <Link 
-              href="/home" 
+              href="/info" 
               onClick={(e) => {
                 e.preventDefault();
-                navigateTo('home');
+                navigateTo('info');
               }}
               className={`flex items-center justify-center h-[40px] w-[40px] rounded-md border border-zinc-800 transition-colors
-                ${currentView === 'home'
+                ${currentView === 'info'
                   ? 'bg-zinc-800' 
                   : 'bg-black hover:bg-zinc-800/50 active:opacity-80'
                 }`}

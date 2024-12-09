@@ -11,8 +11,8 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Farcaster Frames v2 Demo",
-  description: "A Farcaster Frames v2 demo app",
+  title: 'reward.wtf',
+  description: 'trade with friends',
 };
 
 export default function RootLayout({
