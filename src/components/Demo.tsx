@@ -293,7 +293,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                   : "border-zinc-800 text-gray-400 bg-black hover:bg-zinc-900"
               }`}
             >
-              ↔ trade
+              ⇌ trade
             </button>
           </div>
 
@@ -352,10 +352,10 @@ export default function Demo({ title }: DemoProps): JSX.Element {
             className="h-[40px] px-4 rounded-md border border-zinc-800 text-gray-400 bg-black hover:bg-zinc-900 transition-colors font-mono text-sm lowercase"
             onClick={() => router.push("/leaderboard")}
           >
-            leaderboard
+          ≡ leaderboard
           </button>
           <span className="text-gray-400 font-mono text-sm">
-            100 ✵
+          1,000,000 ✵
           </span>
         </div>
       </div>
