@@ -9,7 +9,6 @@ import {
 } from "wagmi";
 import { config } from "~/components/providers/WagmiProvider";
 import Image from 'next/image';
-import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 const imageConfig = {
@@ -35,11 +34,6 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { connect } = useConnect();
-
-  const pathname = usePathname();
-
-  const isHomePage = pathname === "/home";
-  const isLeaderboardPage = pathname === "/leaderboard";
 
   const toggleProfileDropdown = useCallback(() => {
     setIsProfileDropdownOpen((prev) => !prev);
@@ -112,19 +106,25 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   // Modify the router.push calls to use setState instead
   const navigateTo = (view: 'trade' | 'leaderboard' | 'home') => {
     setCurrentView(view);
-    // Update URL without full navigation
-    window.history.pushState({}, '', view === 'trade' ? '/' : `/${view}`);
+    // Always use the view name in URL
+    window.history.pushState({}, '', `/${view}`);
+    // Update document title
+    document.title = `reward.wtf | ${view}`;
   };
 
-  // Add this effect to handle initial route
+  // Update the initial route handling to properly handle /trade
   useEffect(() => {
     const path = window.location.pathname;
     if (path === '/leaderboard') {
       setCurrentView('leaderboard');
     } else if (path === '/home') {
       setCurrentView('home');
-    } else {
+    } else if (path === '/trade' || path === '/') {
       setCurrentView('trade');
+      // If we're at the root URL (/), update it to /trade
+      if (path === '/') {
+        window.history.pushState({}, '', '/trade');
+      }
     }
   }, []);
 
@@ -332,11 +332,11 @@ export default function Demo({ title }: DemoProps): JSX.Element {
 
   // Main content conditional rendering
   const renderContent = () => {
-    if (isHomePage) {
+    if (currentView === 'home') {
       return homeContent;
     }
 
-    if (isLeaderboardPage) {
+    if (currentView === 'leaderboard') {
       return leaderboardContent;
     }
 
@@ -361,8 +361,12 @@ export default function Demo({ title }: DemoProps): JSX.Element {
           <div className="flex items-center">
             <Link 
               href="/home" 
+              onClick={(e) => {
+                e.preventDefault();
+                navigateTo('home');
+              }}
               className={`flex items-center justify-center h-[40px] w-[40px] rounded-md border border-zinc-800 transition-colors
-                ${isHomePage 
+                ${currentView === 'home'
                   ? 'bg-zinc-800' 
                   : 'bg-black hover:bg-zinc-800/50 active:opacity-80'
                 }`}
@@ -400,6 +404,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                     alt="Profile"
                     width={20}
                     height={20}
+                    className="rounded-full"
                     {...imageConfig}
                   />
                 </button>
