@@ -9,7 +9,7 @@ import {
 } from "wagmi";
 import { config } from "~/components/providers/WagmiProvider";
 import Image from 'next/image';
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 const imageConfig = {
@@ -36,7 +36,6 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   const { connect } = useConnect();
 
   const pathname = usePathname();
-  const router = useRouter();
 
   const isHomePage = pathname === "/home";
   const isLeaderboardPage = pathname === "/leaderboard";
@@ -106,201 +105,239 @@ export default function Demo({ title }: DemoProps): JSX.Element {
     }
   };
 
-  // Main content conditional rendering
-  const renderContent = () => {
-    if (isHomePage) {
-      return (
-        <div className="flex items-center justify-center flex-1">
-          <span className="text-gray-400 font-mono">home</span>
-        </div>
-      );
-    }
+  // Add a new state to control the current view
+  const [currentView, setCurrentView] = useState<'trade' | 'leaderboard' | 'home'>('trade');
 
-    if (isLeaderboardPage) {
-      return (
-        <div className="flex items-center justify-center flex-1">
-          <span className="text-gray-400 font-mono">leaderboard</span>
-        </div>
-      );
-    }
+  // Modify the router.push calls to use setState instead
+  const navigateTo = (view: 'trade' | 'leaderboard' | 'home') => {
+    setCurrentView(view);
+    // Update URL without full navigation
+    window.history.pushState({}, '', view === 'trade' ? '/' : `/${view}`);
+  };
 
-    return (
-      <div className="flex flex-col items-center w-full gap-5">
-        {/* ETH Asset Selection */}
-        <div className="flex flex-col items-center w-full">
-          <div className="flex items-center justify-center w-full max-w-[500px] px-4">
-            <div className="w-full">
-              <button
-                onClick={() => setSelectedAsset('ETH')}
-                className="w-full h-[40px] px-4 rounded-md border border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase bg-zinc-800"
-              >
-                ⟠ eth
-              </button>
-            </div>
+  // Add this effect to handle initial route
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === '/leaderboard') {
+      setCurrentView('leaderboard');
+    } else if (path === '/home') {
+      setCurrentView('home');
+    } else {
+      setCurrentView('trade');
+    }
+  }, []);
+
+  // Pre-load the content for different views
+  const homeContent = (
+    <div className="flex items-center justify-center flex-1">
+      <span className="text-gray-400 font-mono">home</span>
+    </div>
+  );
+
+  const leaderboardContent = (
+    <div className="flex items-center justify-center flex-1">
+      <span className="text-gray-400 font-mono">leaderboard</span>
+    </div>
+  );
+
+  const tradeContent = (
+    <div className="flex flex-col items-center w-full gap-5">
+      {/* ETH Asset Selection */}
+      <div className="flex flex-col items-center w-full">
+        <div className="flex items-center justify-center w-full max-w-[500px] px-4">
+          <div className="w-full">
+            <button
+              onClick={() => setSelectedAsset('ETH')}
+              className="w-full h-[40px] px-4 rounded-md border border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase bg-zinc-800"
+            >
+              ⟠ eth
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Trading Buttons */}
-        <div className="flex flex-col items-center w-full">
-          <div className="flex items-center justify-center w-full max-w-[500px] px-4">
-            <div className="w-full grid grid-cols-2">
-              <button 
-                onClick={() => setSelectedPosition('long')}
-                className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-l-md border border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase ${
-                  selectedPosition === 'long' ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
-                }`}
-              >
-                <span className="flex items-center">
-                  <svg height="9.856" viewBox="0 0 15.704 9.856" width="15.704" xmlns="http://www.w3.org/2000/svg">
-                    <path 
-                      d="m529-488.59v5.67l-2.113-2.109-5.326 5.319-2.924-2.921-3.9 3.9-1.444-1.448 5.341-5.341 2.924 2.924 3.882-3.882-2.113-2.109z" 
-                      fill="currentColor" 
-                      transform="translate(-513.3 488.59)"
-                    />
-                  </svg>
-                </span>
-                long
-              </button>
-              
-              <button 
-                onClick={() => setSelectedPosition('short')}
-                className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-r-md border-t border-r border-b border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase ${
-                  selectedPosition === 'short' ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
-                }`}
-              >
-                <span className="flex items-center" style={{ transform: 'scale(-1, 1) rotate(180deg)' }}>
-                  <svg height="9.856" viewBox="0 0 15.704 9.856" width="15.704" xmlns="http://www.w3.org/2000/svg">
-                    <path 
-                      d="m529-488.59v5.67l-2.113-2.109-5.326 5.319-2.924-2.921-3.9 3.9-1.444-1.448 5.341-5.341 2.924 2.924 3.882-3.882-2.113-2.109z" 
-                      fill="currentColor" 
-                      transform="translate(-513.3 488.59)"
-                    />
-                  </svg>
-                </span>
-                short
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Amount Input */}
-        <div className="flex flex-col items-center w-full">
-          <div className="flex items-center justify-center w-full max-w-[500px] px-4">
-            <div className="relative flex items-center w-full">
-              <input
-                ref={inputRef}
-                type="number"
-                inputMode="numeric"
-                step="1"
-                min="0"
-                pattern="\d*"
-                placeholder="0"
-                onFocus={(e) => {
-                  e.target.placeholder = '';
-                }}
-                onBlur={(e) => {
-                  if (!e.target.value) {
-                    e.target.placeholder = '0';
-                  }
-                }}
-                onChange={(e) => {
-                  // Convert to integer and ensure it's positive
-                  const value = Math.floor(Math.abs(Number(e.target.value)));
-                  if (e.target.value === '') {
-                    setInputAmount(null);
-                    e.target.value = '';
-                  } else {
-                    setInputAmount(value);
-                    e.target.value = value.toString();
-                  }
-                }}
-                className="w-full h-[40px] px-4 rounded-md border border-zinc-800 bg-transparent text-gray-400 font-mono text-sm lowercase focus:outline-none focus:border-zinc-700 text-left [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                onKeyDown={(e) => {
-                  // Prevent decimal point
-                  if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
-                    e.preventDefault();
-                  }
-                  if (e.key === 'Enter') {
-                    e.currentTarget.blur();
-                  }
-                }}
-              />
-              <span className="absolute right-3 text-gray-400 pointer-events-none text-sm">
-                $reward
+      {/* Trading Buttons */}
+      <div className="flex flex-col items-center w-full">
+        <div className="flex items-center justify-center w-full max-w-[500px] px-4">
+          <div className="w-full grid grid-cols-2">
+            <button 
+              onClick={() => setSelectedPosition('long')}
+              className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-l-md border border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase ${
+                selectedPosition === 'long' ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
+              }`}
+            >
+              <span className="flex items-center">
+                <svg height="9.856" viewBox="0 0 15.704 9.856" width="15.704" xmlns="http://www.w3.org/2000/svg">
+                  <path 
+                    d="m529-488.59v5.67l-2.113-2.109-5.326 5.319-2.924-2.921-3.9 3.9-1.444-1.448 5.341-5.341 2.924 2.924 3.882-3.882-2.113-2.109z" 
+                    fill="currentColor" 
+                    transform="translate(-513.3 488.59)"
+                  />
+                </svg>
               </span>
-            </div>
+              long
+            </button>
+            
+            <button 
+              onClick={() => setSelectedPosition('short')}
+              className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-r-md border-t border-r border-b border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase ${
+                selectedPosition === 'short' ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
+              }`}
+            >
+              <span className="flex items-center" style={{ transform: 'scale(-1, 1) rotate(180deg)' }}>
+                <svg height="9.856" viewBox="0 0 15.704 9.856" width="15.704" xmlns="http://www.w3.org/2000/svg">
+                  <path 
+                    d="m529-488.59v5.67l-2.113-2.109-5.326 5.319-2.924-2.921-3.9 3.9-1.444-1.448 5.341-5.341 2.924 2.924 3.882-3.882-2.113-2.109z" 
+                    fill="currentColor" 
+                    transform="translate(-513.3 488.59)"
+                  />
+                </svg>
+              </span>
+              short
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Leverage Selection */}
-        <div className="flex flex-col items-center w-full">
-          <div className="flex items-center justify-center w-full max-w-[500px] px-4">
-            <div className="w-full flex">
-              {[2, 5, 10, 50].map((value, index) => (
-                <button
-                  key={value}
-                  onClick={() => setLeverage(value)}
-                  className={`
-                    w-full h-[40px] px-1 sm:px-2 border-t border-b border-zinc-800 
-                    ${index === 0 ? 'rounded-l-md border-l' : ''}
-                    ${index === 3 ? 'rounded-r-md border-r' : 'border-r'}
-                    text-gray-400 transition-colors font-mono text-sm lowercase
-                    ${leverage === value ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'}
-                  `}
-                >
-                  {value}x
-                </button>
-              ))}
-            </div>
+      {/* Amount Input */}
+      <div className="flex flex-col items-center w-full">
+        <div className="flex items-center justify-center w-full max-w-[500px] px-4">
+          <div className="relative flex items-center w-full">
+            <input
+              ref={inputRef}
+              type="number"
+              inputMode="numeric"
+              step="1"
+              min="0"
+              pattern="\d*"
+              placeholder="0"
+              onFocus={(e) => {
+                e.target.placeholder = '';
+              }}
+              onBlur={(e) => {
+                if (!e.target.value) {
+                  e.target.placeholder = '0';
+                }
+              }}
+              onChange={(e) => {
+                // Convert to integer and ensure it's positive
+                const value = Math.floor(Math.abs(Number(e.target.value)));
+                if (e.target.value === '') {
+                  setInputAmount(null);
+                  e.target.value = '';
+                } else {
+                  setInputAmount(value);
+                  e.target.value = value.toString();
+                }
+              }}
+              className={`
+                w-full h-[40px] px-4 rounded-md border border-zinc-800 
+                text-gray-400 font-mono text-sm lowercase focus:outline-none 
+                focus:border-zinc-700 text-left 
+                [appearance:textfield] 
+                [&::-webkit-outer-spin-button]:appearance-none 
+                [&::-webkit-inner-spin-button]:appearance-none
+                transition-colors
+                ${inputAmount ? 'bg-zinc-800' : 'bg-transparent'}
+              `}
+              onKeyDown={(e) => {
+                // Prevent decimal point
+                if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
+                  e.preventDefault();
+                }
+                if (e.key === 'Enter') {
+                  e.currentTarget.blur();
+                }
+              }}
+            />
+            <span className="absolute right-3 text-gray-400 pointer-events-none text-sm">
+              $reward
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* Order Summary */}
-        <div className="flex flex-col items-center w-full">
-          <div className="flex items-center justify-center w-full max-w-[500px] px-4">
-            <div className="flex flex-col gap-2 text-gray-400 font-mono text-sm w-full">
-              <div className="flex justify-between">
-                <span>entry price:</span>
-                <span>${ethPrice.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>liq. price:</span>
-                <span>{
-                  selectedPosition && leverage 
-                    ? `$${Math.round(calculateLiquidationPrice() || 0).toLocaleString()}`
-                    : '---'
-                }</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Place Order Button */}
-        <div className="flex flex-col items-center w-full">
-          <div className="flex items-center justify-center w-full max-w-[500px] px-4">
-            <div className="w-full">
+      {/* Leverage Selection */}
+      <div className="flex flex-col items-center w-full">
+        <div className="flex items-center justify-center w-full max-w-[500px] px-4">
+          <div className="w-full flex">
+            {[2, 5, 10, 50].map((value, index) => (
               <button
-                disabled={!isAllSelected()}
-                onClick={() => {
-                  // Here you could add API call or other order processing logic
-                  resetForm();
-                }}
+                key={value}
+                onClick={() => setLeverage(value)}
                 className={`
-                  w-full h-[40px] px-4 rounded-md border
-                  font-mono text-sm lowercase transition-all
-                  ${isAllSelected() 
-                    ? 'border-zinc-800 bg-transparent text-gray-400 cursor-pointer hover:bg-zinc-800 active:bg-zinc-800'
-                    : 'border-zinc-800/30 bg-transparent text-gray-400/30 cursor-not-allowed'
-                  }
+                  w-full h-[40px] px-1 sm:px-2 border-t border-b border-zinc-800 
+                  ${index === 0 ? 'rounded-l-md border-l' : ''}
+                  ${index === 3 ? 'rounded-r-md border-r' : 'border-r'}
+                  text-gray-400 transition-colors font-mono text-sm lowercase
+                  ${leverage === value ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'}
                 `}
               >
-                ✓ place order
+                {value}x
               </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Order Summary */}
+      <div className="flex flex-col items-center w-full">
+        <div className="flex items-center justify-center w-full max-w-[500px] px-4">
+          <div className="flex flex-col gap-2 text-gray-400 font-mono text-sm w-full">
+            <div className="flex justify-between">
+              <span>entry price:</span>
+              <span>${ethPrice.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>liq. price:</span>
+              <span>{
+                selectedPosition && leverage 
+                  ? `$${Math.round(calculateLiquidationPrice() || 0).toLocaleString()}`
+                  : '---'
+              }</span>
             </div>
           </div>
         </div>
       </div>
-    );
+
+      {/* Place Order Button */}
+      <div className="flex flex-col items-center w-full">
+        <div className="flex items-center justify-center w-full max-w-[500px] px-4">
+          <div className="w-full">
+            <button
+              disabled={!isAllSelected()}
+              onClick={() => {
+                // Here you could add API call or other order processing logic
+                resetForm();
+              }}
+              className={`
+                w-full h-[40px] px-4 rounded-md border
+                font-mono text-sm lowercase transition-all
+                ${isAllSelected() 
+                  ? 'border-zinc-800 bg-transparent text-gray-400 cursor-pointer hover:bg-zinc-800 active:bg-zinc-800'
+                  : 'border-zinc-800/30 bg-transparent text-gray-400/30 cursor-not-allowed'
+                }
+              `}
+            >
+              ✓ place order
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Main content conditional rendering
+  const renderContent = () => {
+    if (isHomePage) {
+      return homeContent;
+    }
+
+    if (isLeaderboardPage) {
+      return leaderboardContent;
+    }
+
+    return tradeContent;
   };
 
   if (!isSDKLoaded) {
@@ -325,7 +362,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                 alt="Freecast Logo"
                 width={40}
                 height={40}
-                className="rounded-full bg-black border border-zinc-800 hover:bg-zinc-800/50 transition-colors active:opacity-80"
+                className="rounded-full bg-black hover:bg-zinc-800/50 transition-colors active:opacity-80"
                 {...imageConfig}
               />
             </Link>
@@ -343,7 +380,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                 <button
                   ref={buttonRef}
                   onClick={toggleProfileDropdown}
-                  className="rounded-full bg-black flex items-center border border-zinc-800 hover:bg-zinc-800/50 transition-colors"
+                  className="rounded-full bg-black flex items-center hover:bg-zinc-800/50 transition-colors"
                 >
                   <Image
                     src={context.user.pfpUrl}
@@ -392,9 +429,9 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         <div className="flex items-center h-[80px] w-full max-w-[500px] px-4 mx-auto">
           <div className="w-full grid grid-cols-2">
             <button 
-              onClick={() => router.push("/leaderboard")}
+              onClick={() => navigateTo('leaderboard')}
               className={`h-[40px] flex items-center justify-center gap-2 rounded-l-md border border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase
-                ${isLeaderboardPage 
+                ${currentView === 'leaderboard' 
                   ? "bg-zinc-800"
                   : "bg-black hover:bg-zinc-900"
                 }`}
@@ -403,9 +440,9 @@ export default function Demo({ title }: DemoProps): JSX.Element {
             </button>
             
             <button 
-              onClick={() => router.push("/")}
+              onClick={() => navigateTo('trade')}
               className={`h-[40px] flex items-center justify-center gap-2 rounded-r-md border-t border-r border-b border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase
-                ${!isHomePage && !isLeaderboardPage
+                ${currentView === 'trade'
                   ? "bg-zinc-800"
                   : "bg-black hover:bg-zinc-900"
                 }`}
