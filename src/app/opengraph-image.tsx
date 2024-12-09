@@ -12,11 +12,12 @@ export default async function OGImage() {
   return new ImageResponse(
     (
       <div tw="h-full w-full flex items-center justify-center bg-black">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="https://reward.wtf/icon.png"
+          src="https://reward.wtf/splash.png"
+          alt="reward.wtf"
           width="80"
           height="80"
-          alt="reward.wtf"
         />
       </div>
     ),
