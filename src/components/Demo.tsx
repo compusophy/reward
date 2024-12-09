@@ -39,6 +39,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   const router = useRouter();
 
   const isHomePage = pathname === "/home";
+  const isLeaderboardPage = pathname === "/leaderboard";
 
   const toggleProfileDropdown = useCallback(() => {
     setIsProfileDropdownOpen((prev) => !prev);
@@ -46,6 +47,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Handle clicking outside of dropdown
   useEffect(() => {
@@ -95,6 +97,15 @@ export default function Demo({ title }: DemoProps): JSX.Element {
     }
   };
 
+  const resetForm = () => {
+    setSelectedPosition(null);
+    setLeverage(null);
+    setInputAmount(null);
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  };
+
   // Main content conditional rendering
   const renderContent = () => {
     if (isHomePage) {
@@ -105,8 +116,16 @@ export default function Demo({ title }: DemoProps): JSX.Element {
       );
     }
 
+    if (isLeaderboardPage) {
+      return (
+        <div className="flex items-center justify-center flex-1">
+          <span className="text-gray-400 font-mono">leaderboard</span>
+        </div>
+      );
+    }
+
     return (
-      <div className="flex flex-col items-center w-full gap-5 mt-5">
+      <div className="flex flex-col items-center w-full gap-5">
         {/* ETH Asset Selection */}
         <div className="flex flex-col items-center w-full">
           <div className="flex items-center justify-center w-full max-w-[500px] px-4">
@@ -169,14 +188,38 @@ export default function Demo({ title }: DemoProps): JSX.Element {
           <div className="flex items-center justify-center w-full max-w-[500px] px-4">
             <div className="relative flex items-center w-full">
               <input
+                ref={inputRef}
                 type="number"
                 inputMode="numeric"
                 step="1"
+                min="0"
                 pattern="\d*"
                 placeholder="0"
-                onChange={(e) => setInputAmount(e.target.value ? Number(e.target.value) : null)}
-                className="w-full h-[40px] px-4 rounded-md border border-zinc-800 bg-transparent text-gray-400 font-mono text-sm lowercase focus:outline-none focus:border-zinc-700 text-left"
+                onFocus={(e) => {
+                  e.target.placeholder = '';
+                }}
+                onBlur={(e) => {
+                  if (!e.target.value) {
+                    e.target.placeholder = '0';
+                  }
+                }}
+                onChange={(e) => {
+                  // Convert to integer and ensure it's positive
+                  const value = Math.floor(Math.abs(Number(e.target.value)));
+                  if (e.target.value === '') {
+                    setInputAmount(null);
+                    e.target.value = '';
+                  } else {
+                    setInputAmount(value);
+                    e.target.value = value.toString();
+                  }
+                }}
+                className="w-full h-[40px] px-4 rounded-md border border-zinc-800 bg-transparent text-gray-400 font-mono text-sm lowercase focus:outline-none focus:border-zinc-700 text-left [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 onKeyDown={(e) => {
+                  // Prevent decimal point
+                  if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
+                    e.preventDefault();
+                  }
                   if (e.key === 'Enter') {
                     e.currentTarget.blur();
                   }
@@ -237,14 +280,18 @@ export default function Demo({ title }: DemoProps): JSX.Element {
           <div className="flex items-center justify-center w-full max-w-[500px] px-4">
             <div className="w-full">
               <button
+                disabled={!isAllSelected()}
+                onClick={() => {
+                  // Here you could add API call or other order processing logic
+                  resetForm();
+                }}
                 className={`
-                  w-full h-[40px] px-4 rounded-md border transition-all duration-150
-                  font-mono text-sm lowercase
+                  w-full h-[40px] px-4 rounded-md border
+                  font-mono text-sm lowercase transition-all
                   ${isAllSelected() 
-                    ? 'border-zinc-400 text-black bg-white hover:bg-zinc-100 active:scale-[0.98]' 
-                    : 'border-zinc-800 text-gray-400 bg-black hover:bg-zinc-900'
+                    ? 'border-zinc-800 bg-transparent text-gray-400 cursor-pointer hover:bg-zinc-800 active:bg-zinc-800'
+                    : 'border-zinc-800/30 bg-transparent text-gray-400/30 cursor-not-allowed'
                   }
-                  active:border-white focus:outline-none
                 `}
               >
                 ✓ place order
@@ -268,8 +315,8 @@ export default function Demo({ title }: DemoProps): JSX.Element {
     <div className="w-full min-h-screen bg-black text-white lowercase font-mono flex flex-col">
       <span style={{ display: 'none' }}>{title}</span>
       
-      {/* Header */}
-      <div className="flex flex-col">
+      {/* Header - Fixed at top */}
+      <header className="flex flex-col">
         <div className="relative flex justify-between h-[80px] w-full max-w-[500px] mx-auto px-4">
           <div className="flex items-center">
             <Link href="/home" className="flex items-center">
@@ -285,16 +332,9 @@ export default function Demo({ title }: DemoProps): JSX.Element {
           </div>
           
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <button 
-              onClick={() => router.push("/")}
-              className={`h-[40px] px-4 rounded-md border transition-colors font-mono text-sm lowercase ${
-                !isHomePage 
-                  ? "border-zinc-400 text-black bg-white hover:bg-zinc-100"
-                  : "border-zinc-800 text-gray-400 bg-black hover:bg-zinc-900"
-              }`}
-            >
-              ⇌ trade
-            </button>
+            <span className="text-gray-400 font-mono text-sm">
+              1,000,000 ✵
+            </span>
           </div>
 
           <div className="flex items-center">
@@ -337,28 +377,44 @@ export default function Demo({ title }: DemoProps): JSX.Element {
           </div>
         </div>
         <div className="w-full h-px bg-zinc-800" />
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="flex-1">
-        {renderContent()}
-      </div>
-
-      {/* Footer */}
-      <div className="w-full">
-        <div className="w-full h-px bg-zinc-800" />
-        <div className="flex justify-between items-center h-[80px] w-full max-w-[500px] px-4 mx-auto">
-          <button 
-            className="h-[40px] px-4 rounded-md border border-zinc-800 text-gray-400 bg-black hover:bg-zinc-900 transition-colors font-mono text-sm lowercase"
-            onClick={() => router.push("/leaderboard")}
-          >
-          ≡ leaderboard
-          </button>
-          <span className="text-gray-400 font-mono text-sm">
-          1,000,000 ✵
-          </span>
+      {/* Main - Takes remaining space with padding */}
+      <main className="flex-1 flex flex-col">
+        <div className="w-full pt-5">
+          {renderContent()}
         </div>
-      </div>
+      </main>
+
+      {/* Footer - Fixed at bottom */}
+      <footer className="w-full">
+        <div className="w-full h-px bg-zinc-800" />
+        <div className="flex items-center h-[80px] w-full max-w-[500px] px-4 mx-auto">
+          <div className="w-full grid grid-cols-2">
+            <button 
+              onClick={() => router.push("/leaderboard")}
+              className={`h-[40px] flex items-center justify-center gap-2 rounded-l-md border border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase
+                ${isLeaderboardPage 
+                  ? "bg-zinc-800"
+                  : "bg-black hover:bg-zinc-900"
+                }`}
+            >
+              ≡ leaderboard
+            </button>
+            
+            <button 
+              onClick={() => router.push("/")}
+              className={`h-[40px] flex items-center justify-center gap-2 rounded-r-md border-t border-r border-b border-zinc-800 text-gray-400 transition-colors font-mono text-sm lowercase
+                ${!isHomePage && !isLeaderboardPage
+                  ? "bg-zinc-800"
+                  : "bg-black hover:bg-zinc-900"
+                }`}
+            >
+              ⇌ trade
+            </button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -405,4 +461,3 @@ const ProfileDropdown = ({
     </div>
   </div>
 );
-
