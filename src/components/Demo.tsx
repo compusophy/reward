@@ -25,6 +25,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const [context, setContext] = useState<FrameContext>();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const ethPrice = 3500; // Hardcoded ETH price
   const [leverage, setLeverage] = useState<number | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<'long' | 'short' | null>(null);
@@ -213,11 +214,13 @@ export default function Demo({ title }: DemoProps): JSX.Element {
               placeholder="0"
               onFocus={(e) => {
                 e.target.placeholder = '';
+                setIsInputFocused(true);
               }}
               onBlur={(e) => {
                 if (!e.target.value) {
                   e.target.placeholder = '0';
                 }
+                setIsInputFocused(false);
               }}
               onChange={(e) => {
                 // Convert to integer and ensure it's positive
@@ -238,7 +241,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                 [&::-webkit-outer-spin-button]:appearance-none 
                 [&::-webkit-inner-spin-button]:appearance-none
                 transition-colors
-                ${inputAmount ? 'bg-zinc-800' : 'bg-transparent'}
+                ${!isInputFocused && inputAmount ? 'bg-zinc-800' : 'bg-transparent'}
               `}
               onKeyDown={(e) => {
                 // Prevent decimal point
@@ -356,13 +359,19 @@ export default function Demo({ title }: DemoProps): JSX.Element {
       <header className="flex flex-col">
         <div className="relative flex justify-between h-[80px] w-full max-w-[500px] mx-auto px-4">
           <div className="flex items-center">
-            <Link href="/home" className="flex items-center">
+            <Link 
+              href="/home" 
+              className={`flex items-center justify-center h-[40px] w-[40px] rounded-md border border-zinc-800 transition-colors
+                ${isHomePage 
+                  ? 'bg-zinc-800' 
+                  : 'bg-black hover:bg-zinc-800/50 active:opacity-80'
+                }`}
+            >
               <Image
-                src={isHomePage ? "/icon-negated.png" : "/icon.png"}
-                alt="Freecast Logo"
-                width={40}
-                height={40}
-                className="rounded-full bg-black hover:bg-zinc-800/50 transition-colors active:opacity-80"
+                src="/icon-transparent.png"
+                alt="Reward Logo"
+                width={20}
+                height={20}
                 {...imageConfig}
               />
             </Link>
@@ -380,14 +389,17 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                 <button
                   ref={buttonRef}
                   onClick={toggleProfileDropdown}
-                  className="rounded-full bg-black flex items-center hover:bg-zinc-800/50 transition-colors"
+                  className={`flex items-center justify-center h-[40px] w-[40px] rounded-md border border-zinc-800 transition-colors
+                    ${isProfileDropdownOpen 
+                      ? 'bg-zinc-800' 
+                      : 'bg-black hover:bg-zinc-800/50 active:opacity-80'
+                    }`}
                 >
                   <Image
                     src={context.user.pfpUrl}
                     alt="Profile"
-                    width={40}
-                    height={40}
-                    className="rounded-full"
+                    width={20}
+                    height={20}
                     {...imageConfig}
                   />
                 </button>
