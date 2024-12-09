@@ -21,49 +21,6 @@ interface DemoProps {
   title?: string;
 }
 
-const ProfileDropdown = ({ 
-  isConnected, 
-  context, 
-  address, 
-  onDisconnect, 
-  onConnect 
-}: { 
-  isConnected: boolean;
-  context: FrameContext | undefined;
-  address: string | undefined;
-  onDisconnect: () => void;
-  onConnect: () => void;
-}) => (
-  <div className="absolute right-4 top-[80px] w-[calc(50%-16px)] bg-black rounded-lg border border-zinc-800 shadow-lg py-5 flex flex-col gap-5 z-10">
-    {context?.user?.username && (
-      <div className="mx-5">
-        <div className="w-full h-[40px] flex items-center justify-center text-sm text-gray-300 rounded-md border border-zinc-800 hover:bg-zinc-800/50 transition-colors">
-          @{context.user.username.toLowerCase()}
-        </div>
-      </div>
-    )}
-    {address && (
-      <div className="mx-5">
-        <div className="w-full h-[40px] flex items-center justify-center text-sm text-gray-300 rounded-md border border-zinc-800 hover:bg-zinc-800/50 transition-colors">
-          {`${address.slice(0, 6)}...${address.slice(-4)}`.toLowerCase()}
-        </div>
-      </div>
-    )}
-    <div className="mx-5">
-      <button
-        onClick={isConnected ? onDisconnect : onConnect}
-        className={`w-full h-[40px] flex items-center justify-center text-sm rounded-md border transition-colors ${
-          isConnected 
-            ? 'border-red-500/50 text-red-400 hover:bg-red-500/10' 
-            : 'border-green-500/50 text-green-400 hover:bg-green-500/10'
-        }`}
-      >
-        {isConnected ? 'disconnect' : 'connect'}
-      </button>
-    </div>
-  </div>
-);
-
 export default function Demo({ title }: DemoProps): JSX.Element {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const [context, setContext] = useState<FrameContext>();
@@ -290,7 +247,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                   active:border-white focus:outline-none
                 `}
               >
-                place order
+                ✓ place order
               </button>
             </div>
           </div>
@@ -321,7 +278,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                 alt="Freecast Logo"
                 width={40}
                 height={40}
-                className="rounded-full bg-black active:opacity-80"
+                className="rounded-full bg-black border border-zinc-800 hover:bg-zinc-800/50 transition-colors active:opacity-80"
                 {...imageConfig}
               />
             </Link>
@@ -336,7 +293,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                   : "border-zinc-800 text-gray-400 bg-black hover:bg-zinc-900"
               }`}
             >
-              trade
+              ↔ trade
             </button>
           </div>
 
@@ -390,16 +347,62 @@ export default function Demo({ title }: DemoProps): JSX.Element {
       {/* Footer */}
       <div className="w-full">
         <div className="w-full h-px bg-zinc-800" />
-        <div className="flex justify-center items-center h-[80px] w-full max-w-[500px] px-4 mx-auto">
+        <div className="flex justify-between items-center h-[80px] w-full max-w-[500px] px-4 mx-auto">
           <button 
             className="h-[40px] px-4 rounded-md border border-zinc-800 text-gray-400 bg-black hover:bg-zinc-900 transition-colors font-mono text-sm lowercase"
             onClick={() => router.push("/leaderboard")}
           >
             leaderboard
           </button>
+          <span className="text-gray-400 font-mono text-sm">
+            100 ✵
+          </span>
         </div>
       </div>
     </div>
   );
 }
+
+const ProfileDropdown = ({ 
+  isConnected, 
+  context, 
+  address, 
+  onDisconnect, 
+  onConnect 
+}: { 
+  isConnected: boolean;
+  context: FrameContext | undefined;
+  address: string | undefined;
+  onDisconnect: () => void;
+  onConnect: () => void;
+}) => (
+  <div className="absolute right-4 top-[80px] w-[calc(50%-16px)] bg-black rounded-lg border border-zinc-800 shadow-lg py-5 flex flex-col gap-5 z-10">
+    {context?.user?.username && (
+      <div className="mx-5">
+        <div className="w-full h-[40px] flex items-center justify-center text-sm text-gray-300 rounded-md border border-zinc-800 hover:bg-zinc-800/50 transition-colors">
+          @{context.user.username.toLowerCase()}
+        </div>
+      </div>
+    )}
+    {address && (
+      <div className="mx-5">
+        <div className="w-full h-[40px] flex items-center justify-center text-sm text-gray-300 rounded-md border border-zinc-800 hover:bg-zinc-800/50 transition-colors">
+          {`${address.slice(0, 6)}...${address.slice(-4)}`.toLowerCase()}
+        </div>
+      </div>
+    )}
+    <div className="mx-5">
+      <button
+        onClick={isConnected ? onDisconnect : onConnect}
+        className={`w-full h-[40px] flex items-center justify-center text-sm rounded-md border transition-colors ${
+          isConnected 
+            ? 'border-red-500/50 text-red-400 hover:bg-red-500/10' 
+            : 'border-green-500/50 text-green-400 hover:bg-green-500/10'
+        }`}
+      >
+        {isConnected ? 'disconnect' : 'connect'}
+      </button>
+    </div>
+  </div>
+);
 
