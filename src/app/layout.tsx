@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${ibmPlexMono.variable}`}>
+    <html lang="en" className={`${ibmPlexMono.variable} text-zinc-400 bg-black`}>
       <body className="font-mono lowercase">
         <Providers>{children}</Providers>
       </body>
