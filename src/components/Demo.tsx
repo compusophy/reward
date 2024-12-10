@@ -66,40 +66,46 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   });
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [hasOpenPosition, setHasOpenPosition] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [isClosingOrder, setIsClosingOrder] = useState<string | null>(null);
 
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { connect } = useConnect();
 
   const placeOrderHandler = async () => {
-    if (!isAllSelected() || !context?.user?.fid) return;
+    if (!isAllSelected() || !context?.user?.fid || isPlacingOrder) return;
 
-    const success = await placeOrder(
-      context.user.fid,
-      selectedPosition!,
-      leverage!,
-      inputAmount!,
-      ethPrice
-    );
-
-    if (success) {
-      // Refresh user's balance from server
-      const newBalance = await recordVisitor(
-        context.user.fid,
-        context.user.username,
-        context.user.pfpUrl,
-        address
-      );
-      setUserBalance(newBalance);
+    try {
+      setIsPlacingOrder(true);
       
-      // Refresh orders and update hasOpenPosition
-      getUserOrders(context.user.fid).then(orders => {
-        setUserOrders(orders);
-        setHasOpenPosition(orders.length > 0);
-      });
+      const success = await placeOrder(
+        context.user.fid,
+        selectedPosition!,
+        leverage!,
+        inputAmount!,
+        ethPrice
+      );
 
-      // Reset form
-      resetForm();
+      if (success) {
+        // Update UI optimistically
+        setHasOpenPosition(true);
+        
+        // Refresh data in background
+        Promise.all([
+          recordVisitor(context.user.fid, context.user.username, context.user.pfpUrl, address)
+            .then(setUserBalance),
+          getUserOrders(context.user.fid)
+            .then(orders => {
+              setUserOrders(orders);
+              setHasOpenPosition(orders.length > 0);
+            })
+        ]);
+
+        resetForm();
+      }
+    } finally {
+      setIsPlacingOrder(false);
     }
   };
 
@@ -230,7 +236,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   }, [currentView]);
 
   const infoContent = (
-    <div className="flex flex-col items-center w-full max-w-[500px] mx-auto px-4 gap-5">
+    <div className="flex flex-col items-center w-full max-w-[500px] mx-auto px-4 gap-5 pt-5">
       <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
         <span className="text-zinc-400 font-mono text-sm">total users:</span>
         <span className="text-zinc-400 font-mono text-sm">{stats.totalUsers}</span>
@@ -259,7 +265,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   );
 
   const leaderboardContent = (
-    <div className="flex flex-col items-center w-full max-w-[500px] mx-auto px-4 gap-5">
+    <div className="flex flex-col items-center w-full max-w-[500px] mx-auto px-4 gap-5 pt-5">
       {leaderboardData.map((user, index) => (
         <div 
           key={user.fid}
@@ -286,15 +292,16 @@ export default function Demo({ title }: DemoProps): JSX.Element {
       ))}
       {leaderboardData.length === 0 && (
         <div className="h-[40px] flex items-center text-zinc-400 font-mono text-sm">
-          no users yet
+          ...
         </div>
       )}
     </div>
   );
 
   const tradeContent = (
-    <div className="flex flex-col items-center w-full">
-      <div className="flex flex-col items-center w-full gap-5 pb-[200px]">
+    <div className="flex flex-col items-center w-full h-full">
+      {/* Main trading content - Starts after header, grows from top */}
+      <div className="flex flex-col items-center w-full gap-5 pt-5">
         {/* ETH Asset Selection */}
         <div className="flex flex-col items-center w-full">
           <div className="flex items-center justify-center w-full max-w-[500px] px-4">
@@ -496,32 +503,32 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         </div>
 
         {/* Place Order Button */}
-        <div className="flex flex-col items-center w-full">
+        <div className="flex flex-col items-center w-full mb-5">
           <div className="flex items-center justify-center w-full max-w-[500px] px-4">
             <div className="w-full">
               <button
-                disabled={!isAllSelected()}
+                disabled={!isAllSelected() || isPlacingOrder}
                 onClick={placeOrderHandler}
                 className={`
                   w-full h-[40px] px-4 rounded-md border
                   font-mono text-sm lowercase transition-all
-                  ${isAllSelected() && !hasOpenPosition 
+                  ${isAllSelected() && !hasOpenPosition && !isPlacingOrder
                     ? 'border-green-500/50 text-green-400 hover:bg-green-500/10 cursor-pointer'
                     : 'border-green-500/10 text-green-400/20 cursor-not-allowed'
                   }
                 `}
               >
-                ✓ open
+                {isPlacingOrder ? '...' : '✓ open'}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Open Orders - Fixed to bottom */}
-      <div className="fixed bottom-[100px] left-0 right-0 bg-black">
+      {/* Open Orders - Fixed above footer */}
+      <div className={`fixed bottom-[80px] left-0 right-0 bg-black ${userOrders.length > 0 ? 'border-t border-zinc-800' : ''}`}>
         <div className="flex items-center justify-center w-full max-w-[500px] mx-auto px-4">
-          <div className="w-full flex flex-col gap-5">
+          <div className="w-full flex flex-col gap-5 py-5">
             {userOrders.map((order) => {
               const markPrice = ethPrice;
               const pnlPercent = order.position === 'long'
@@ -594,9 +601,18 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                   {/* Close Button */}
                   <button
                     onClick={() => closeOrderHandler(order.id)}
-                    className="w-full h-[40px] px-4 rounded-md border border-red-500/50 text-red-400 hover:bg-red-500/10 transition-colors font-mono text-sm"
+                    disabled={isClosingOrder === order.id}
+                    className={`
+                      w-full h-[40px] px-4 rounded-md border 
+                      border-red-500/50 text-red-400 
+                      ${isClosingOrder === order.id 
+                        ? 'opacity-50 cursor-not-allowed'
+                        : 'hover:bg-red-500/10'
+                      } 
+                      transition-colors font-mono text-sm
+                    `}
                   >
-                    × close
+                    {isClosingOrder === order.id ? '...' : '× close'}
                   </button>
                 </div>
               );
@@ -639,18 +655,28 @@ export default function Demo({ title }: DemoProps): JSX.Element {
 
   // Add closeOrderHandler
   const closeOrderHandler = async (orderId: string) => {
-    if (!context?.user?.fid) return;
+    if (!context?.user?.fid || isClosingOrder === orderId) return;
     
-    const success = await closeOrder(context.user.fid, orderId);
-    
-    if (success) {
-      // Refresh orders list and update hasOpenPosition
-      getUserOrders(context.user.fid).then(orders => {
-        setUserOrders(orders);
-        setHasOpenPosition(orders.length > 0);
-      });
-      // Reset form when position is closed
-      resetForm();
+    try {
+      setIsClosingOrder(orderId);
+      
+      const success = await closeOrder(context.user.fid, orderId);
+      
+      if (success) {
+        // Update UI optimistically
+        setUserOrders(prev => prev.filter(order => order.id !== orderId));
+        setHasOpenPosition(false);
+        
+        // Refresh data in background
+        getUserOrders(context.user.fid).then(orders => {
+          setUserOrders(orders);
+          setHasOpenPosition(orders.length > 0);
+        });
+        
+        resetForm();
+      }
+    } finally {
+      setIsClosingOrder(null);
     }
   };
 
@@ -689,92 +715,94 @@ export default function Demo({ title }: DemoProps): JSX.Element {
       <span style={{ display: 'none' }}>{title}</span>
       
       {/* Header - Fixed at top */}
-      <header className="flex flex-col">
-        <div className="relative flex justify-between h-[80px] w-full max-w-[500px] mx-auto px-4">
-          <div className="flex items-center">
-            <Link 
-              href="/info" 
-              onClick={(e) => {
-                e.preventDefault();
-                navigateTo('info');
-              }}
-              className={`flex items-center justify-center h-[40px] w-[40px] rounded-md border border-zinc-800 transition-colors
-                ${currentView === 'info'
-                  ? 'bg-zinc-800' 
-                  : 'bg-black hover:bg-zinc-800/50 active:opacity-80'
-                }`}
-            >
-              <Image
-                src="/icon-transparent.png"
-                alt="Reward Logo"
-                width={20}
-                height={20}
-                {...imageConfig}
-              />
-            </Link>
-          </div>
-          
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <span className="text-zinc-400 font-mono text-sm">
-              {userBalance.toLocaleString()}✵
-            </span>
-          </div>
+      <header className="fixed top-0 left-0 right-0 z-50 bg-black">
+        <div className="flex flex-col">
+          <div className="relative flex justify-between h-[80px] w-full max-w-[500px] mx-auto px-4">
+            <div className="flex items-center">
+              <Link 
+                href="/info" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigateTo('info');
+                }}
+                className={`flex items-center justify-center h-[40px] w-[40px] rounded-md border border-zinc-800 transition-colors
+                  ${currentView === 'info'
+                    ? 'bg-zinc-800' 
+                    : 'bg-black hover:bg-zinc-800/50 active:opacity-80'
+                  }`}
+              >
+                <Image
+                  src="/icon-transparent.png"
+                  alt="Reward Logo"
+                  width={20}
+                  height={20}
+                  {...imageConfig}
+                />
+              </Link>
+            </div>
+            
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              <span className="text-zinc-400 font-mono text-sm">
+                {userBalance.toLocaleString()}✵
+              </span>
+            </div>
 
-          <div className="flex items-center">
-            {context?.user?.pfpUrl && (
-              <>
-                <button
-                  ref={buttonRef}
-                  onClick={toggleProfileDropdown}
-                  className={`flex items-center justify-center h-[40px] w-[40px] rounded-md border border-zinc-800 transition-colors
-                    ${isProfileDropdownOpen 
-                      ? 'bg-zinc-800' 
-                      : 'bg-black hover:bg-zinc-800/50 active:opacity-80'
-                    }`}
-                >
-                  <Image
-                    src={context.user.pfpUrl}
-                    alt="Profile"
-                    width={20}
-                    height={20}
-                    className="rounded-full"
-                    {...imageConfig}
-                  />
-                </button>
-                
-                {isProfileDropdownOpen && (
-                  <div ref={dropdownRef}>
-                    <ProfileDropdown
-                      isConnected={isConnected}
-                      context={context}
-                      address={address}
-                      onDisconnect={() => {
-                        disconnect();
-                        setIsProfileDropdownOpen(false);
-                      }}
-                      onConnect={() => {
-                        connect({ connector: config.connectors[0] });
-                        setIsProfileDropdownOpen(false);
-                      }}
+            <div className="flex items-center">
+              {context?.user?.pfpUrl && (
+                <>
+                  <button
+                    ref={buttonRef}
+                    onClick={toggleProfileDropdown}
+                    className={`flex items-center justify-center h-[40px] w-[40px] rounded-md border border-zinc-800 transition-colors
+                      ${isProfileDropdownOpen 
+                        ? 'bg-zinc-800' 
+                        : 'bg-black hover:bg-zinc-800/50 active:opacity-80'
+                      }`}
+                  >
+                    <Image
+                      src={context.user.pfpUrl}
+                      alt="Profile"
+                      width={20}
+                      height={20}
+                      className="rounded-full"
+                      {...imageConfig}
                     />
-                  </div>
-                )}
-              </>
-            )}
+                  </button>
+                  
+                  {isProfileDropdownOpen && (
+                    <div ref={dropdownRef}>
+                      <ProfileDropdown
+                        isConnected={isConnected}
+                        context={context}
+                        address={address}
+                        onDisconnect={() => {
+                          disconnect();
+                          setIsProfileDropdownOpen(false);
+                        }}
+                        onConnect={() => {
+                          connect({ connector: config.connectors[0] });
+                          setIsProfileDropdownOpen(false);
+                        }}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
+          <div className="w-full h-px bg-zinc-800" />
         </div>
-        <div className="w-full h-px bg-zinc-800" />
       </header>
 
-      {/* Main - Takes remaining space with padding */}
-      <main className="flex-1 flex flex-col">
-        <div className="w-full pt-5">
+      {/* Main content - Scrollable area with exact height */}
+      <main className="flex-1 flex flex-col mt-[81px] mb-[81px] h-[calc(100vh-162px)] overflow-y-auto">
+        <div className="w-full h-full">
           {renderContent()}
         </div>
       </main>
 
       {/* Footer - Fixed at bottom */}
-      <footer className="w-full">
+      <footer className="fixed bottom-0 left-0 right-0 z-50 bg-black">
         <div className="w-full h-px bg-zinc-800" />
         <div className="flex items-center h-[80px] w-full max-w-[500px] px-4 mx-auto">
           <div className="w-full grid grid-cols-2">
