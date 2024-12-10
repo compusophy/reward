@@ -297,7 +297,12 @@ export default function Demo({ title }: DemoProps): JSX.Element {
           <div className="w-full">
             <button
               onClick={() => setSelectedAsset('ETH')}
-              className="w-full h-[40px] px-4 rounded-md border border-zinc-800 text-zinc-400 transition-colors font-mono text-sm lowercase bg-zinc-800"
+              disabled={hasOpenPosition}
+              className={`w-full h-[40px] px-4 rounded-md border border-zinc-800 transition-colors font-mono text-sm lowercase ${
+                hasOpenPosition 
+                  ? 'opacity-20 cursor-not-allowed bg-transparent text-zinc-400/20'
+                  : 'bg-zinc-800 text-zinc-400'
+              }`}
             >
               ⟠ eth
             </button>
@@ -311,8 +316,13 @@ export default function Demo({ title }: DemoProps): JSX.Element {
           <div className="w-full grid grid-cols-2">
             <button 
               onClick={() => setSelectedPosition('long')}
-              className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-l-md border border-zinc-800 text-zinc-400 transition-colors font-mono text-sm lowercase ${
-                selectedPosition === 'long' ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
+              disabled={hasOpenPosition}
+              className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-l-md border border-zinc-800 transition-colors font-mono text-sm lowercase ${
+                hasOpenPosition 
+                  ? 'opacity-20 cursor-not-allowed text-zinc-400/20'
+                  : selectedPosition === 'long' 
+                    ? 'bg-zinc-800 text-zinc-400' 
+                    : 'hover:bg-zinc-800/50 text-zinc-400'
               }`}
             >
               <span className="flex items-center">
@@ -329,8 +339,13 @@ export default function Demo({ title }: DemoProps): JSX.Element {
             
             <button 
               onClick={() => setSelectedPosition('short')}
+              disabled={hasOpenPosition}
               className={`w-full h-[40px] flex items-center justify-center gap-2 rounded-r-md border-t border-r border-b border-zinc-800 text-zinc-400 transition-colors font-mono text-sm lowercase ${
-                selectedPosition === 'short' ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
+                hasOpenPosition 
+                  ? 'opacity-20 cursor-not-allowed text-zinc-400/20'
+                  : selectedPosition === 'short' 
+                    ? 'bg-zinc-800 text-zinc-400' 
+                    : 'hover:bg-zinc-800/50 text-zinc-400'
               }`}
             >
               <span className="flex items-center" style={{ transform: 'scale(-1, 1) rotate(180deg)' }}>
@@ -382,12 +397,13 @@ export default function Demo({ title }: DemoProps): JSX.Element {
               }}
               className={`
                 w-full h-[40px] px-4 rounded-md border border-zinc-800 
-                text-zinc-400 font-mono text-sm lowercase focus:outline-none 
+                font-mono text-sm lowercase focus:outline-none 
                 focus:border-zinc-700 text-left pr-10
                 [appearance:textfield] 
                 [&::-webkit-outer-spin-button]:appearance-none 
                 [&::-webkit-inner-spin-button]:appearance-none
                 transition-colors
+                ${hasOpenPosition ? 'opacity-20 cursor-not-allowed text-zinc-400/20' : 'text-zinc-400'}
                 ${!isInputFocused && inputAmount ? 'bg-zinc-800' : 'bg-transparent'}
               `}
               onKeyDown={(e) => {
@@ -399,7 +415,9 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                 }
               }}
             />
-            <span className="absolute right-3 inset-y-0 flex items-center text-zinc-400 pointer-events-none text-sm">
+            <span className={`absolute right-3 inset-y-0 flex items-center pointer-events-none text-sm ${
+              hasOpenPosition ? 'text-zinc-400/20' : 'text-zinc-400'
+            }`}>
               ✵
             </span>
           </div>
@@ -414,12 +432,18 @@ export default function Demo({ title }: DemoProps): JSX.Element {
               <button
                 key={value}
                 onClick={() => setLeverage(value)}
+                disabled={hasOpenPosition}
                 className={`
                   w-full h-[40px] px-1 sm:px-2 border-t border-b border-zinc-800 
                   ${index === 0 ? 'rounded-l-md border-l' : ''}
                   ${index === 3 ? 'rounded-r-md border-r' : 'border-r'}
-                  text-zinc-400 transition-colors font-mono text-sm lowercase
-                  ${leverage === value ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'}
+                  font-mono text-sm lowercase transition-colors
+                  ${hasOpenPosition 
+                    ? 'opacity-20 cursor-not-allowed text-zinc-400/20'
+                    : leverage === value 
+                      ? 'bg-zinc-800 text-zinc-400' 
+                      : 'hover:bg-zinc-800/50 text-zinc-400'
+                  }
                 `}
               >
                 {value}x
@@ -434,24 +458,34 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         <div className="flex items-center justify-center w-full max-w-[500px] px-4">
           <div className="flex flex-col gap-2 font-mono text-sm w-full">
             <div className="flex justify-between">
-              <span className="text-zinc-400 font-mono text-sm">entry price:</span>
-              <span className="text-zinc-400">${ethPrice.toLocaleString()}</span>
+              <span className={`font-mono text-sm ${hasOpenPosition ? 'text-zinc-500/20' : 'text-zinc-500'}`}>
+                entry price:
+              </span>
+              <span className={hasOpenPosition ? 'text-zinc-400/20' : 'text-zinc-400'}>
+                ${ethPrice.toLocaleString()}
+              </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-zinc-400 font-mono text-sm">liq. price:</span>
-              <span className="text-zinc-400">{
-                selectedPosition && leverage 
+              <span className={`font-mono text-sm ${hasOpenPosition ? 'text-zinc-500/20' : 'text-zinc-500'}`}>
+                liq. price:
+              </span>
+              <span className={hasOpenPosition ? 'text-zinc-400/20' : 'text-zinc-400'}>
+                {selectedPosition && leverage 
                   ? `$${Math.round(calculateLiquidationPrice() || 0).toLocaleString()}`
                   : '---'
-              }</span>
+                }
+              </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-zinc-400 font-mono text-sm">fee:</span>
-              <span className="text-zinc-400">{
-                inputAmount 
+              <span className={`font-mono text-sm ${hasOpenPosition ? 'text-zinc-500/20' : 'text-zinc-500'}`}>
+                fee:
+              </span>
+              <span className={hasOpenPosition ? 'text-zinc-400/20' : 'text-zinc-400'}>
+                {inputAmount 
                   ? `${Math.max(0, Math.ceil(inputAmount * 0.01))}✵`
                   : '---'
-              }</span>
+                }
+              </span>
             </div>
           </div>
         </div>
@@ -498,7 +532,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                   {/* Left Column - Position Details */}
                   <div className="flex flex-col gap-2 w-1/2">
                     <div className="flex justify-between gap-3">
-                      <span className="text-zinc-400 font-mono text-sm">
+                      <span className="text-zinc-500 font-mono text-sm">
                         type:
                       </span>
                       <span className="text-zinc-400 font-mono text-sm">
@@ -506,7 +540,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                       </span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-zinc-400 font-mono text-sm">
+                      <span className="text-zinc-500 font-mono text-sm">
                         size:
                       </span>
                       <span className="text-zinc-400 font-mono text-sm">
@@ -514,7 +548,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                       </span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-zinc-400 font-mono text-sm">
+                      <span className="text-zinc-500 font-mono text-sm">
                         profit:
                       </span>
                       <span className={`font-mono text-sm ${
@@ -528,7 +562,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                   {/* Right Column - Prices */}
                   <div className="flex flex-col gap-2 w-1/2">
                     <div className="flex justify-between gap-3">
-                      <span className="text-zinc-400 font-mono text-sm">
+                      <span className="text-zinc-500 font-mono text-sm">
                         entry:
                       </span>
                       <span className="text-zinc-400 font-mono text-sm">
@@ -536,7 +570,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                       </span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-zinc-400 font-mono text-sm">
+                      <span className="text-zinc-500 font-mono text-sm">
                         liq:
                       </span>
                       <span className="text-zinc-400 font-mono text-sm">
@@ -544,7 +578,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                       </span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-zinc-400 font-mono text-sm">
+                      <span className="text-zinc-500 font-mono text-sm">
                         mark:
                       </span>
                       <span className="text-zinc-400 font-mono text-sm">
