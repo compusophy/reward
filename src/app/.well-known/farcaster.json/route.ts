@@ -10,7 +10,7 @@ export async function GET() {
     frame: {
       version: "0.0.0",
       name: "reward.wtf",
-      iconUrl: `${appUrl}/icon-transparent.png`,
+      iconUrl: `${appUrl}/icon.png`,
       splashImageUrl: `${appUrl}/splash.png`,
       splashBackgroundColor: "#000000",
       homeUrl: appUrl,
