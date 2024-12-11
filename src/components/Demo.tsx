@@ -486,7 +486,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
             <div className="flex flex-col gap-2 font-mono text-sm w-full">
               <div className="flex justify-between">
                 <span className={`font-mono text-sm ${hasOpenPosition ? 'text-zinc-500/20' : 'text-zinc-500'}`}>
-                  price:
+                  entry price:
                 </span>
                 <span className={hasOpenPosition ? 'text-zinc-400/20' : 'text-zinc-400'}>
                   {hasOpenPosition ? '---' : serverPrice ? `$${Math.round(serverPrice).toLocaleString()}` : '---'}
@@ -536,7 +536,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                   }
                 `}
               >
-                {isPlacingOrder ? '...' : '✓ open'}
+                {isPlacingOrder ? '...' : '✓ open position'}
               </button>
             </div>
           </div>
@@ -656,7 +656,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                         mt-[12px]
                       `}
                     >
-                      {isClosingOrder === order.id ? '...' : '× close'}
+                      {isClosingOrder === order.id ? '...' : '× close position'}
                     </button>
                   </div>
                 </div>
