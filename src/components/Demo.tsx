@@ -38,7 +38,6 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   const [context, setContext] = useState<FrameContext>();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const [ethPrice, setEthPrice] = useState<number | null>(null);
   const [leverage, setLeverage] = useState<number | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<'long' | 'short' | null>(null);
   const [selectedAsset, setSelectedAsset] = useState('ETH')
@@ -68,43 +67,23 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   const [hasOpenPosition, setHasOpenPosition] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isClosingOrder, setIsClosingOrder] = useState<string | null>(null);
+  const [serverPrice, setServerPrice] = useState<number | null>(null);
 
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { connect } = useConnect();
 
   useEffect(() => {
-    const ws = new WebSocket('wss://fstream.binance.com/ws/ethusdt@aggTrade');
-    
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.p) {
-        setEthPrice(Math.round(parseFloat(data.p)));
+    const serverPriceRef = ref(db, 'serverPrice');
+    return onValue(serverPriceRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setServerPrice(snapshot.val().price);
       }
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    ws.onclose = () => {
-      // Attempt to reconnect if page is visible
-      setTimeout(() => {
-        if (document.visibilityState === 'visible') {
-          ws.close();
-        }
-      }, 1000);
-    };
-
-    return () => {
-      if (ws.readyState === 1) { // 1 = WebSocket.OPEN
-        ws.close();
-      }
-    };
+    });
   }, []);
 
   const placeOrderHandler = async () => {
-    if (!isAllSelected() || !context?.user?.fid || isPlacingOrder || !ethPrice) return;
+    if (!isAllSelected() || !context?.user?.fid || isPlacingOrder || !serverPrice) return;
 
     try {
       setIsPlacingOrder(true);
@@ -114,7 +93,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         selectedPosition!,
         leverage!,
         inputAmount!,
-        ethPrice
+        serverPrice
       );
 
       if (success) {
@@ -212,12 +191,12 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   };
 
   const calculateLiquidationPrice = () => {
-    if (!selectedPosition || !leverage || !ethPrice) return null;
+    if (!selectedPosition || !leverage || !serverPrice) return null;
     
     if (selectedPosition === 'long') {
-      return ethPrice * (1 - 1/leverage);
+      return serverPrice * (1 - 1/leverage);
     } else {
-      return ethPrice * (1 + 1/leverage);
+      return serverPrice * (1 + 1/leverage);
     }
   };
 
@@ -267,29 +246,36 @@ export default function Demo({ title }: DemoProps): JSX.Element {
 
   const infoContent = (
     <div className="flex flex-col items-center w-full max-w-[500px] mx-auto px-4 gap-5 pt-5">
-      <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
-        <span className="text-zinc-400 font-mono text-sm">total users:</span>
-        <span className="text-zinc-400 font-mono text-sm">{stats.totalUsers}</span>
-      </div>
-      <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
-        <span className="text-zinc-400 font-mono text-sm">total transactions:</span>
-        <span className="text-zinc-400 font-mono text-sm">{stats.totalTransactions}</span>
-      </div>
-      <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
-        <span className="text-zinc-400 font-mono text-sm">total volume:</span>
-        <span className="text-zinc-400 font-mono text-sm">{stats.totalVolume.toLocaleString()}✵</span>
-      </div>
-      <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
-        <span className="text-zinc-400 font-mono text-sm">vault fees:</span>
-        <span className="text-zinc-400 font-mono text-sm">{stats.vault.fees.toLocaleString()}✵</span>
-      </div>
-      <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
-        <span className="text-zinc-400 font-mono text-sm">vault debt:</span>
-        <span className="text-zinc-400 font-mono text-sm">{stats.vault.debt.toLocaleString()}✵</span>
-      </div>
-      <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
-        <span className="text-zinc-400 font-mono text-sm">vault deposits:</span>
-        <span className="text-zinc-400 font-mono text-sm">{stats.vault.deposits.toLocaleString()}✵</span>
+      <div className="flex flex-col gap-5 w-full">
+        <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
+          <span className="text-zinc-500 font-mono text-sm">total_users:</span>
+          <span className="text-zinc-400 font-mono text-sm">{stats.totalUsers.toLocaleString()}</span>
+        </div>
+
+        <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
+          <span className="text-zinc-500 font-mono text-sm">total_volume:</span>
+          <span className="text-zinc-400 font-mono text-sm">{stats.totalVolume.toLocaleString()}✵</span>
+        </div>
+
+        <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
+          <span className="text-zinc-500 font-mono text-sm">total_transactions:</span>
+          <span className="text-zinc-400 font-mono text-sm">{stats.totalTransactions.toLocaleString()}</span>
+        </div>
+
+        <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
+          <span className="text-zinc-500 font-mono text-sm">vault_fees:</span>
+          <span className="text-zinc-400 font-mono text-sm">{stats.vault.fees.toLocaleString()}✵</span>
+        </div>
+
+        <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
+          <span className="text-zinc-500 font-mono text-sm">vault_debt:</span>
+          <span className="text-zinc-400 font-mono text-sm">{stats.vault.debt.toLocaleString()}✵</span>
+        </div>
+
+        <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
+          <span className="text-zinc-500 font-mono text-sm">vault_deposits:</span>
+          <span className="text-zinc-400 font-mono text-sm">{stats.vault.deposits.toLocaleString()}✵</span>
+        </div>
       </div>
     </div>
   );
@@ -500,10 +486,10 @@ export default function Demo({ title }: DemoProps): JSX.Element {
             <div className="flex flex-col gap-2 font-mono text-sm w-full">
               <div className="flex justify-between">
                 <span className={`font-mono text-sm ${hasOpenPosition ? 'text-zinc-500/20' : 'text-zinc-500'}`}>
-                  entry price:
+                  price:
                 </span>
                 <span className={hasOpenPosition ? 'text-zinc-400/20' : 'text-zinc-400'}>
-                  {hasOpenPosition ? '---' : ethPrice ? `$${Math.round(ethPrice).toLocaleString()}` : '---'}
+                  {hasOpenPosition ? '---' : serverPrice ? `$${Math.round(serverPrice).toLocaleString()}` : '---'}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -562,7 +548,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         <div className="flex items-center justify-center w-full max-w-[500px] mx-auto px-4">
           <div className="w-full flex flex-col gap-5 py-5">
             {userOrders.map((order) => {
-              const markPrice = ethPrice || 0;
+              const markPrice = serverPrice || 0;
               const pnlPercent = order.position === 'long'
                 ? ((markPrice - order.entryPrice) / order.entryPrice) * 100 * order.leverage
                 : ((order.entryPrice - markPrice) / order.entryPrice) * 100 * order.leverage;
@@ -642,7 +628,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                             mark:
                           </span>
                           <span className="text-zinc-400 font-mono text-sm">
-                            ${ethPrice ? Math.round(ethPrice).toLocaleString() : '---'}
+                            ${serverPrice ? Math.round(serverPrice).toLocaleString() : '---'}
                           </span>
                         </div>
                         <div className="flex justify-between gap-3">

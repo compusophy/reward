@@ -192,7 +192,7 @@ export async function placeOrder(
   clientPrice: number
 ) {
   // Get current server-side price
-  const priceSnapshot = await get(ref(db, 'prices/ETH'));
+  const priceSnapshot = await get(ref(db, 'serverPrice'));
   const serverPrice = priceSnapshot.val().price;
   
   // Check if client price is within 0.5% of server price
@@ -310,13 +310,15 @@ export const closeOrder = async (
     const vaultRef = ref(db, 'vault');
     
     // Get current order data and price
-    const [orderSnapshot, priceSnapshot] = await Promise.all([
+    const [orderSnapshot, priceSnapshot, userSnapshot, vaultSnapshot] = await Promise.all([
       get(userOrderRef),
-      get(ref(db, 'prices/ETH'))
+      get(ref(db, 'serverPrice')),
+      get(userRef),
+      get(vaultRef)
     ]);
     
-    if (!orderSnapshot.exists() || !priceSnapshot.exists()) {
-      console.error('Failed to fetch order or price data');
+    if (!orderSnapshot.exists() || !priceSnapshot.exists() || !userSnapshot.exists() || !vaultSnapshot.exists()) {
+      console.error('Failed to fetch order, price, user, or vault data');
       return false;
     }
     
@@ -345,14 +347,12 @@ export const closeOrder = async (
     };
     
     // Update user balance (now including network fee deduction)
-    const userSnapshot = await get(userRef);
     if (userSnapshot.exists()) {
       const userData = userSnapshot.val();
       updates[`users/${fid}/balance`] = userData.balance + returnAmount - networkFee;
     }
     
     // Update vault with network fee
-    const vaultSnapshot = await get(vaultRef);
     if (vaultSnapshot.exists()) {
       const vaultData = vaultSnapshot.val();
       updates['vault'] = {
