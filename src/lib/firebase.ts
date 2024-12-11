@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set, get, runTransaction } from "firebase/database";
+import { getDatabase, ref, set, get, runTransaction, update } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -102,20 +102,12 @@ export async function getGlobalStats(): Promise<GlobalStats> {
     const usersSnapshot = await get(usersRef);
     const totalUsers = usersSnapshot.exists() ? Object.keys(usersSnapshot.val()).length : 0;
 
-    // Get total volume from orders
-    const ordersRef = ref(db, 'orders');
-    const ordersSnapshot = await get(ordersRef);
-    const totalVolume = ordersSnapshot.exists() 
-      ? Object.values(ordersSnapshot.val() as Record<string, { amount: number }>)
-          .reduce((sum, order) => sum + order.amount, 0)
-      : 0;
-
-    // Get total transactions
+    // Get stats including total volume
     const statsRef = ref(db, 'stats');
     const statsSnapshot = await get(statsRef);
-    const totalTransactions = statsSnapshot.exists() 
-      ? (statsSnapshot.val().totalTransactions || 0)
-      : 0;
+    const stats = statsSnapshot.exists() 
+      ? statsSnapshot.val() 
+      : { totalVolume: 0, totalTransactions: 0 };
 
     // Get vault data
     const vault = vaultSnapshot.exists() 
@@ -124,10 +116,10 @@ export async function getGlobalStats(): Promise<GlobalStats> {
 
     return {
       totalUsers,
-      totalVolume,
-      totalTransactions,
+      totalVolume: stats.totalVolume || 0,
+      totalTransactions: stats.totalTransactions || 0,
       vault
-    } as GlobalStats;
+    };
   } catch (error) {
     console.error('Failed to fetch global stats:', error);
     return {
@@ -135,7 +127,7 @@ export async function getGlobalStats(): Promise<GlobalStats> {
       totalVolume: 0,
       totalTransactions: 0,
       vault: { fees: 0, debt: 0, deposits: 0 }
-    } as GlobalStats;
+    };
   }
 }
 
@@ -173,15 +165,15 @@ async function hasOpenOrder(userId: number): Promise<boolean> {
   }
 }
 
-// Add a function to update total volume
+// Fix the updateTotalVolume function to properly maintain state
 async function updateTotalVolume(amount: number): Promise<boolean> {
   try {
     const statsRef = ref(db, 'stats');
     await runTransaction(statsRef, (currentStats) => {
-      if (!currentStats) return { totalVolume: amount };
+      const current = currentStats || { totalVolume: 0, totalTransactions: 0 };
       return {
-        ...currentStats,
-        totalVolume: (currentStats.totalVolume || 0) + amount
+        ...current,
+        totalVolume: (current.totalVolume || 0) + amount
       };
     });
     return true;
@@ -193,15 +185,25 @@ async function updateTotalVolume(amount: number): Promise<boolean> {
 
 // Update placeOrder to check for existing open orders
 export async function placeOrder(
-  userId: number,
+  fid: number,
   position: 'long' | 'short',
   leverage: number,
   amount: number,
-  entryPrice: number
-): Promise<boolean> {
+  clientPrice: number
+) {
+  // Get current server-side price
+  const priceSnapshot = await get(ref(db, 'prices/ETH'));
+  const serverPrice = priceSnapshot.val().price;
+  
+  // Check if client price is within 0.5% of server price
+  const priceDiff = Math.abs(clientPrice - serverPrice) / serverPrice;
+  if (priceDiff > 0.005) {
+    throw new Error('Price deviation too large');
+  }
+
   try {
     // Check if user already has an open order
-    const hasExisting = await hasOpenOrder(userId);
+    const hasExisting = await hasOpenOrder(fid);
     if (hasExisting) {
       return false;
     }
@@ -210,17 +212,17 @@ export async function placeOrder(
     const timestamp = Date.now();
 
     const liquidationPrice = position === 'long'
-      ? entryPrice * (1 - 1/leverage)
-      : entryPrice * (1 + 1/leverage);
+      ? clientPrice * (1 - 1/leverage)
+      : clientPrice * (1 + 1/leverage);
 
     const order: Order = {
       id: orderId,
-      userId,
+      userId: fid,
       timestamp,
       position,
       leverage,
       amount,
-      entryPrice,
+      entryPrice: clientPrice,
       liquidationPrice,
       status: 'open'
     };
@@ -230,7 +232,7 @@ export async function placeOrder(
     const totalCost = amount + fee;
 
     // Get user's current balance
-    const userRef = ref(db, `users/${userId}`);
+    const userRef = ref(db, `users/${fid}`);
     const userSnapshot = await get(userRef);
     if (!userSnapshot.exists()) return false;
 
@@ -248,7 +250,7 @@ export async function placeOrder(
     });
 
     // Add order to user's orders
-    const userOrderRef = ref(db, `userOrders/${userId}/${orderId}`);
+    const userOrderRef = ref(db, `userOrders/${fid}/${orderId}`);
     await set(userOrderRef, order);
 
     // Add to global orders
@@ -297,71 +299,68 @@ export async function getUserOrders(userId: number): Promise<Order[]> {
   }
 }
 
-export async function closeOrder(userId: number, orderId: string): Promise<boolean> {
+export const closeOrder = async (
+  fid: number, 
+  orderId: string,
+  networkFee: number
+): Promise<boolean> => {
   try {
-    const userOrderRef = ref(db, `userOrders/${userId}/${orderId}`);
-    const orderSnapshot = await get(userOrderRef);
+    const userOrderRef = ref(db, `userOrders/${fid}/${orderId}`);
+    const userRef = ref(db, `users/${fid}`);
+    const vaultRef = ref(db, 'vault');
     
-    if (!orderSnapshot.exists()) return false;
+    // Get current order data and price
+    const [orderSnapshot, priceSnapshot] = await Promise.all([
+      get(userOrderRef),
+      get(ref(db, 'prices/ETH'))
+    ]);
+    
+    if (!orderSnapshot.exists() || !priceSnapshot.exists()) {
+      console.error('Failed to fetch order or price data');
+      return false;
+    }
     
     const order = orderSnapshot.val() as Order;
-    const currentPrice = 3500;
-
+    const currentPrice = priceSnapshot.val().price;
+    
     // Calculate PnL
     const pnlPercent = order.position === 'long'
       ? ((currentPrice - order.entryPrice) / order.entryPrice)
       : ((order.entryPrice - currentPrice) / order.entryPrice);
     
     const pnlAmount = order.amount * pnlPercent * order.leverage;
-    const returnAmount = order.amount + pnlAmount;
+    const returnAmount = Math.ceil(order.amount + pnlAmount);
 
     // Remove the original position amount from vault deposits
     const depositSuccess = await updateVaultDeposits(-order.amount);
     if (!depositSuccess) return false;
 
-    // If position is profitable, handle debt creation
-    if (pnlAmount > 0) {
-      const vaultRef = ref(db, 'vault');
-      const vaultSnapshot = await get(vaultRef);
-      const vault = vaultSnapshot.exists() 
-        ? (vaultSnapshot.val() as VaultData)
-        : { ...defaultVault };
-
-      // Calculate how much of the profit can be covered by deposits
-      const availableDeposits = Math.max(0, vault.deposits);
-      const profitFromDeposits = Math.min(pnlAmount, availableDeposits);
-      const profitFromDebt = pnlAmount - profitFromDeposits;
-
-      // Update vault deposits and debt accordingly
-      await set(vaultRef, {
-        ...vault,
-        deposits: vault.deposits - profitFromDeposits,
-        debt: vault.debt + profitFromDebt
-      });
-    }
-
-    // Get and update user's balance
-    const userRef = ref(db, `users/${userId}`);
-    const userSnapshot = await get(userRef);
-    if (!userSnapshot.exists()) return false;
-    
-    const userData = userSnapshot.val() as FirebaseUserData;
-    await set(userRef, {
-      ...userData,
-      balance: userData.balance + returnAmount
-    });
-
-    // Update order status
-    const closedOrder = {
-      ...order,
-      status: 'closed',
-      closePrice: currentPrice,
-      pnlAmount,
-      pnlPercent: pnlPercent * 100 * order.leverage
+    // Start a transaction to update multiple nodes
+    type Updates = {
+      [key: string]: string | number | null | { [key: string]: number };
     };
-
-    await set(userOrderRef, closedOrder);
-    await set(ref(db, `orders/${orderId}`), closedOrder);
+    
+    const updates: Updates = {
+      [`userOrders/${fid}/${orderId}`]: null,
+    };
+    
+    // Update user balance (now including network fee deduction)
+    const userSnapshot = await get(userRef);
+    if (userSnapshot.exists()) {
+      const userData = userSnapshot.val();
+      updates[`users/${fid}/balance`] = userData.balance + returnAmount - networkFee;
+    }
+    
+    // Update vault with network fee
+    const vaultSnapshot = await get(vaultRef);
+    if (vaultSnapshot.exists()) {
+      const vaultData = vaultSnapshot.val();
+      updates['vault'] = {
+        ...vaultData,
+        fees: (vaultData.fees || 0) + networkFee,
+        deposits: Math.max(0, (vaultData.deposits || 0) - order.amount)
+      };
+    }
 
     // Increment total transactions counter
     const statsRef = ref(db, 'stats');
@@ -375,13 +374,16 @@ export async function closeOrder(userId: number, orderId: string): Promise<boole
 
     // Add closing amount to total volume
     await updateTotalVolume(order.amount);
-
+    
+    // Perform all updates atomically
+    await update(ref(db), updates);
+    
     return true;
   } catch (error) {
-    console.error('Failed to close order:', error);
+    console.error('Error closing order:', error);
     return false;
   }
-}
+};
 
 interface VaultData {
   fees: number;     // Collected trading fees

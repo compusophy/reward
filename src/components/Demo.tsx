@@ -38,7 +38,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   const [context, setContext] = useState<FrameContext>();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const ethPrice = 3500; // Hardcoded price
+  const [ethPrice, setEthPrice] = useState<number | null>(null);
   const [leverage, setLeverage] = useState<number | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<'long' | 'short' | null>(null);
   const [selectedAsset, setSelectedAsset] = useState('ETH')
@@ -73,8 +73,38 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   const { disconnect } = useDisconnect();
   const { connect } = useConnect();
 
+  useEffect(() => {
+    const ws = new WebSocket('wss://fstream.binance.com/ws/ethusdt@aggTrade');
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.p) {
+        setEthPrice(Math.round(parseFloat(data.p)));
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    ws.onclose = () => {
+      // Attempt to reconnect if page is visible
+      setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+          ws.close();
+        }
+      }, 1000);
+    };
+
+    return () => {
+      if (ws.readyState === 1) { // 1 = WebSocket.OPEN
+        ws.close();
+      }
+    };
+  }, []);
+
   const placeOrderHandler = async () => {
-    if (!isAllSelected() || !context?.user?.fid || isPlacingOrder) return;
+    if (!isAllSelected() || !context?.user?.fid || isPlacingOrder || !ethPrice) return;
 
     try {
       setIsPlacingOrder(true);
@@ -182,7 +212,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   };
 
   const calculateLiquidationPrice = () => {
-    if (!selectedPosition || !leverage) return null;
+    if (!selectedPosition || !leverage || !ethPrice) return null;
     
     if (selectedPosition === 'long') {
       return ethPrice * (1 - 1/leverage);
@@ -473,7 +503,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                   entry price:
                 </span>
                 <span className={hasOpenPosition ? 'text-zinc-400/20' : 'text-zinc-400'}>
-                  ${ethPrice.toLocaleString()}
+                  {hasOpenPosition ? '---' : ethPrice ? `$${Math.round(ethPrice).toLocaleString()}` : '---'}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -481,10 +511,11 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                   liq. price:
                 </span>
                 <span className={hasOpenPosition ? 'text-zinc-400/20' : 'text-zinc-400'}>
-                  {selectedPosition && leverage 
-                    ? `$${Math.round(calculateLiquidationPrice() || 0).toLocaleString()}`
-                    : '---'
-                  }
+                  {hasOpenPosition ? '---' : (
+                    selectedPosition && leverage 
+                      ? `$${Math.round(calculateLiquidationPrice() || 0).toLocaleString()}`
+                      : '---'
+                  )}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -492,10 +523,11 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                   network fee:
                 </span>
                 <span className={hasOpenPosition ? 'text-zinc-400/20' : 'text-zinc-400'}>
-                  {inputAmount 
-                    ? `${Math.max(0, Math.ceil(inputAmount * 0.01))}✵`
-                    : '---'
-                  }
+                  {hasOpenPosition ? '---' : (
+                    inputAmount 
+                      ? `${Math.max(0, Math.ceil(inputAmount * 0.01))}✵`
+                      : '---'
+                  )}
                 </span>
               </div>
             </div>
@@ -530,90 +562,117 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         <div className="flex items-center justify-center w-full max-w-[500px] mx-auto px-4">
           <div className="w-full flex flex-col gap-5 py-5">
             {userOrders.map((order) => {
-              const markPrice = ethPrice;
+              const markPrice = ethPrice || 0;
               const pnlPercent = order.position === 'long'
                 ? ((markPrice - order.entryPrice) / order.entryPrice) * 100 * order.leverage
                 : ((order.entryPrice - markPrice) / order.entryPrice) * 100 * order.leverage;
 
+              const roundedPnlPercent = pnlPercent > 0 
+                ? Math.ceil(pnlPercent)
+                : Math.floor(pnlPercent);
+
+              const profitTokens = Math.ceil((order.amount * roundedPnlPercent) / 100);
+              const currentSize = order.amount + profitTokens;
+
               return (
-                <div key={order.id} className="w-full flex flex-col gap-5">
-                  {/* Main Info - Two Column Layout with 20px Gap */}
-                  <div className="flex w-full gap-5">
-                    {/* Left Column - Position Details */}
-                    <div className="flex flex-col gap-2 w-1/2">
-                      <div className="flex justify-between gap-3">
-                        <span className="text-zinc-500 font-mono text-sm">
-                          type:
-                        </span>
-                        <span className="text-zinc-400 font-mono text-sm">
-                          eth {order.position} {order.leverage}x
-                        </span>
+                <div key={order.id} className="flex flex-col">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex w-full gap-5">
+                      <div className="flex flex-col gap-2 w-1/2">
+                        <div className="flex justify-between gap-3">
+                          <span className="text-zinc-500 font-mono text-sm">
+                            type:
+                          </span>
+                          <span className="text-zinc-400 font-mono text-sm">
+                            eth {order.position} {order.leverage}x
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-zinc-500 font-mono text-sm">
+                            collateral:
+                          </span>
+                          <span className="text-zinc-400 font-mono text-sm">
+                            {order.amount.toLocaleString()}✵
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-zinc-500 font-mono text-sm">
+                            position:
+                          </span>
+                          <span className="text-zinc-400 font-mono text-sm">
+                            {Math.max(0, currentSize).toLocaleString()}✵
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-zinc-500 font-mono text-sm">
+                            profit:
+                          </span>
+                          <span className={`font-mono text-sm ${
+                            roundedPnlPercent > 0 ? 'text-green-400' : roundedPnlPercent < 0 ? 'text-red-400' : 'text-zinc-400'
+                          }`}>
+                            {roundedPnlPercent > 0 
+                              ? '+' 
+                              : roundedPnlPercent < 0 
+                                ? '-'
+                                : ''
+                            }{Math.abs(profitTokens)}✵
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-zinc-500 font-mono text-sm">
-                          size:
-                        </span>
-                        <span className="text-zinc-400 font-mono text-sm">
-                          {order.amount.toLocaleString()}✵
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-zinc-500 font-mono text-sm">
-                          profit:
-                        </span>
-                        <span className={`font-mono text-sm ${
-                          pnlPercent > 0 ? 'text-green-400' : pnlPercent < 0 ? 'text-red-400' : 'text-zinc-400'
-                        }`}>
-                          {pnlPercent > 0 ? '+' : ''}{Math.round(Math.abs(pnlPercent))}%
-                        </span>
+
+                      <div className="flex flex-col gap-2 w-1/2">
+                        <div className="flex justify-between gap-3">
+                          <span className="text-zinc-500 font-mono text-sm">
+                            entry:
+                          </span>
+                          <span className="text-zinc-400 font-mono text-sm">
+                            ${Math.round(order.entryPrice).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-zinc-500 font-mono text-sm">
+                            liq.:
+                          </span>
+                          <span className="text-zinc-400 font-mono text-sm">
+                            ${Math.round(order.liquidationPrice).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-zinc-500 font-mono text-sm">
+                            mark:
+                          </span>
+                          <span className="text-zinc-400 font-mono text-sm">
+                            ${ethPrice ? Math.round(ethPrice).toLocaleString() : '---'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-zinc-500 font-mono text-sm">
+                            network fee:
+                          </span>
+                          <span className="text-zinc-400 font-mono text-sm">
+                            {Math.ceil(currentSize * 0.01)}✵
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Right Column - Prices */}
-                    <div className="flex flex-col gap-2 w-1/2">
-                      <div className="flex justify-between gap-3">
-                        <span className="text-zinc-500 font-mono text-sm">
-                          entry:
-                        </span>
-                        <span className="text-zinc-400 font-mono text-sm">
-                          ${order.entryPrice.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-zinc-500 font-mono text-sm">
-                          liq.:
-                        </span>
-                        <span className="text-zinc-400 font-mono text-sm">
-                          ${Math.round(order.liquidationPrice).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-zinc-500 font-mono text-sm">
-                          mark:
-                        </span>
-                        <span className="text-zinc-400 font-mono text-sm">
-                          ${markPrice.toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
+                    <button
+                      onClick={() => closeOrderHandler(order.id)}
+                      disabled={isClosingOrder === order.id}
+                      className={`
+                        w-full h-[40px] px-4 rounded-md border 
+                        border-red-500/50 text-red-400 
+                        ${isClosingOrder === order.id 
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'hover:bg-red-500/10'
+                        } 
+                        transition-colors font-mono text-sm
+                        mt-[12px]
+                      `}
+                    >
+                      {isClosingOrder === order.id ? '...' : '× close'}
+                    </button>
                   </div>
-
-                  {/* Close Button */}
-                  <button
-                    onClick={() => closeOrderHandler(order.id)}
-                    disabled={isClosingOrder === order.id}
-                    className={`
-                      w-full h-[40px] px-4 rounded-md border 
-                      border-red-500/50 text-red-400 
-                      ${isClosingOrder === order.id 
-                        ? 'opacity-50 cursor-not-allowed'
-                        : 'hover:bg-red-500/10'
-                      } 
-                      transition-colors font-mono text-sm
-                    `}
-                  >
-                    {isClosingOrder === order.id ? '...' : '× close'}
-                  </button>
                 </div>
               );
             })}
@@ -660,7 +719,13 @@ export default function Demo({ title }: DemoProps): JSX.Element {
     try {
       setIsClosingOrder(orderId);
       
-      const success = await closeOrder(context.user.fid, orderId);
+      // Find the order to get its amount for fee calculation
+      const order = userOrders.find(o => o.id === orderId);
+      if (!order) return;
+      
+      const networkFee = Math.ceil(order.amount * 0.01);
+      
+      const success = await closeOrder(context.user.fid, orderId, networkFee);
       
       if (success) {
         // Update UI optimistically
@@ -668,10 +733,14 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         setHasOpenPosition(false);
         
         // Refresh data in background
-        getUserOrders(context.user.fid).then(orders => {
-          setUserOrders(orders);
-          setHasOpenPosition(orders.length > 0);
-        });
+        Promise.all([
+          getUserOrders(context.user.fid).then(orders => {
+            setUserOrders(orders);
+            setHasOpenPosition(orders.length > 0);
+          }),
+          // Optionally refresh global stats if they're displayed
+          currentView === 'info' ? getGlobalStats().then(setStats) : Promise.resolve()
+        ]);
         
         resetForm();
       }
