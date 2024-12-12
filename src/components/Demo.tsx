@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useEffect, useCallback, useState, useRef } from "react";
@@ -572,7 +573,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         <div className="flex flex-col items-center w-full">
           <div className="flex items-center justify-center w-full max-w-[500px] px-4">
             <div className="w-full flex">
-              {[2, 5, 10, 1000].map((value, index) => (
+              {[10, 100, 1000].map((value, index) => (
                 <button
                   key={value}
                   onClick={() => setLeverage(value)}
@@ -755,7 +756,11 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                             network fee:
                           </span>
                           <span className="text-zinc-400 font-mono text-sm">
-                            {order.pendingClose ? '...' : `${Math.ceil(currentSize * 0.01).toLocaleString()}✵`}
+                            {order.pendingClose ? '...' : (
+                              profitTokens > 0 
+                                ? `${Math.ceil(profitTokens * 0.01).toLocaleString()}✵`
+                                : '0✵'
+                            )}
                           </span>
                         </div>
                       </div>
@@ -973,17 +978,8 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         <div className="flex flex-col">
           <div className="relative flex justify-between h-[80px] w-full max-w-[500px] mx-auto px-4">
             <div className="flex items-center">
-              <Link 
-                href="/info" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigateTo('info');
-                }}
-                className={`flex items-center justify-center h-[40px] w-[40px] rounded-md border border-zinc-800 transition-colors
-                  ${currentView === 'info'
-                    ? 'bg-zinc-800' 
-                    : 'bg-black hover:bg-zinc-800/50 active:opacity-80'
-                  }`}
+              <button 
+                className="flex items-center justify-center h-[40px] w-[40px] rounded-md border border-zinc-800 transition-colors bg-black hover:bg-zinc-800/50 active:opacity-80"
               >
                 <Image
                   src="/icon-transparent.png"
@@ -992,7 +988,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                   height={20}
                   {...imageConfig}
                 />
-              </Link>
+              </button>
             </div>
             
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
