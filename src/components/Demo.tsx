@@ -19,12 +19,13 @@ import {
   getLeaderboard, 
   UserData, 
   getGlobalStats, 
-  placeOrder, 
+  requestOpenPosition, 
+  requestClosePosition,
   getUserOrders,
   Order,
-  closeOrder,
   db,
-  ref 
+  ref,
+  subscribeToUserOrders
 } from "~/lib/firebase";
 import { onValue } from "firebase/database";
 import { Button } from "~/components/ui/Button";
@@ -183,30 +184,25 @@ export default function Demo({ title }: DemoProps): JSX.Element {
     try {
       setIsPlacingOrder(true);
       
-      const success = await placeOrder(
+      const success = await requestOpenPosition(
         context.user.fid,
         selectedPosition!,
         leverage!,
-        inputAmount!,
-        serverPrice
+        inputAmount!
       );
 
       if (success) {
-        // Update UI optimistically
-        setHasOpenPosition(true);
+        // Reset form immediately
+        resetForm();
         
         // Refresh data in background
         Promise.all([
-          recordVisitor(context.user.fid, context.user.username, context.user.pfpUrl, address)
-            .then(setUserBalance),
-          getUserOrders(context.user.fid)
-            .then(orders => {
-              setUserOrders(orders);
-              setHasOpenPosition(orders.length > 0);
-            })
+          getUserOrders(context.user.fid).then(orders => {
+            setUserOrders(orders);
+            setHasOpenPosition(orders.length > 0);
+          }),
+          // User balance will update automatically via onValue listener
         ]);
-
-        resetForm();
       }
     } finally {
       setIsPlacingOrder(false);
@@ -264,6 +260,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         contextWithFallback.user.pfpUrl,
         userAddress
       );
+      
       
       setUserBalance(balance);
       
@@ -541,17 +538,6 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                     e.target.value = value.toString();
                   }
                 }}
-                className={`
-                  w-full h-[40px] px-4 rounded-md border border-zinc-800 
-                  font-mono text-sm lowercase focus:outline-none 
-                  focus:border-zinc-700 text-left pr-10
-                  [appearance:textfield] 
-                  [&::-webkit-outer-spin-button]:appearance-none 
-                  [&::-webkit-inner-spin-button]:appearance-none
-                  transition-colors
-                  ${hasOpenPosition ? 'opacity-20 cursor-not-allowed text-zinc-400/20' : 'text-zinc-400'}
-                  ${!isInputFocused && inputAmount ? 'bg-zinc-800' : 'bg-transparent'}
-                `}
                 onKeyDown={(e) => {
                   if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
                     e.preventDefault();
@@ -560,7 +546,19 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                     e.currentTarget.blur();
                   }
                 }}
+                className="opacity-0 absolute inset-0 w-full h-full"
               />
+              {/* Display element */}
+              <div className={`
+                w-full h-[40px] px-4 rounded-md border border-zinc-800 
+                font-mono text-sm lowercase focus:outline-none 
+                focus:border-zinc-700 text-left pr-10
+                transition-colors flex items-center
+                ${hasOpenPosition ? 'opacity-20 cursor-not-allowed text-zinc-400/20' : 'text-zinc-400'}
+                ${!isInputFocused && inputAmount ? 'bg-zinc-800' : 'bg-transparent'}
+              `}>
+                {inputAmount ? inputAmount.toLocaleString() : '0'}
+              </div>
               <span className={`absolute right-3 inset-y-0 flex items-center pointer-events-none text-sm ${
                 hasOpenPosition ? 'text-zinc-400/20' : 'text-zinc-400'
               }`}>
@@ -574,7 +572,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         <div className="flex flex-col items-center w-full">
           <div className="flex items-center justify-center w-full max-w-[500px] px-4">
             <div className="w-full flex">
-              {[2, 5, 10, 50].map((value, index) => (
+              {[2, 5, 10, 1000].map((value, index) => (
                 <button
                   key={value}
                   onClick={() => setLeverage(value)}
@@ -592,7 +590,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                     }
                   `}
                 >
-                  {value}x
+                  {value.toLocaleString()}x
                 </button>
               ))}
             </div>
@@ -630,7 +628,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                 <span className={hasOpenPosition ? 'text-zinc-400/20' : 'text-zinc-400'}>
                   {hasOpenPosition ? '---' : (
                     inputAmount 
-                      ? `${Math.max(0, Math.ceil(inputAmount * 0.01))}✵`
+                      ? `${Math.max(0, Math.ceil(inputAmount * 0.01)).toLocaleString()}✵`
                       : '---'
                   )}
                 </span>
@@ -655,7 +653,9 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                   }
                 `}
               >
-                {isPlacingOrder ? '...' : '✓ open position'}
+                {isPlacingOrder 
+                  ? '⟳ opening...' 
+                  : '✓ open position'}
               </button>
             </div>
           </div>
@@ -689,7 +689,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                             type:
                           </span>
                           <span className="text-zinc-400 font-mono text-sm">
-                            eth {order.position} {order.leverage}x
+                            eth {order.position} {order.leverage.toLocaleString()}x
                           </span>
                         </div>
                         <div className="flex justify-between gap-3">
@@ -720,7 +720,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                               : roundedPnlPercent < 0 
                                 ? '-'
                                 : ''
-                            }{Math.abs(profitTokens)}✵
+                            }{Math.abs(profitTokens).toLocaleString()}✵
                           </span>
                         </div>
                       </div>
@@ -755,7 +755,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
                             network fee:
                           </span>
                           <span className="text-zinc-400 font-mono text-sm">
-                            {Math.ceil(currentSize * 0.01)}✵
+                            {order.pendingClose ? '...' : `${Math.ceil(currentSize * 0.01).toLocaleString()}✵`}
                           </span>
                         </div>
                       </div>
@@ -763,19 +763,24 @@ export default function Demo({ title }: DemoProps): JSX.Element {
 
                     <button
                       onClick={() => closeOrderHandler(order.id)}
-                      disabled={isClosingOrder === order.id}
+                      disabled={isClosingOrder === order.id || order.pendingClose}
                       className={`
                         w-full h-[40px] px-4 rounded-md border 
-                        border-red-500/50 text-red-400 
-                        ${isClosingOrder === order.id 
-                          ? 'opacity-50 cursor-not-allowed'
-                          : 'hover:bg-red-500/10'
+                        ${order.pendingClose 
+                          ? 'border-yellow-500/50 text-yellow-400 cursor-not-allowed'
+                          : isClosingOrder === order.id 
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'border-red-500/50 text-red-400 hover:bg-red-500/10'
                         } 
                         transition-colors font-mono text-sm
                         mt-[12px]
                       `}
                     >
-                      {isClosingOrder === order.id ? '...' : '× close position'}
+                      {order.pendingClose 
+                        ? '⟳ closing...'
+                        : isClosingOrder === order.id 
+                          ? '...' 
+                          : '× close position'}
                     </button>
                   </div>
                 </div>
@@ -867,10 +872,19 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   // Add effect to fetch orders when context changes
   useEffect(() => {
     if (context?.user?.fid) {
+      // Initial fetch
       getUserOrders(context.user.fid).then(orders => {
         setUserOrders(orders);
         setHasOpenPosition(orders.length > 0);
       });
+
+      // Subscribe to real-time updates
+      const unsubscribe = subscribeToUserOrders(context.user.fid, (orders) => {
+        setUserOrders(orders);
+        setHasOpenPosition(orders.length > 0);
+      });
+
+      return () => unsubscribe();
     }
   }, [context?.user?.fid]);
 
@@ -881,30 +895,16 @@ export default function Demo({ title }: DemoProps): JSX.Element {
     try {
       setIsClosingOrder(orderId);
       
-      // Find the order to get its amount for fee calculation
-      const order = userOrders.find(o => o.id === orderId);
-      if (!order) return;
-      
-      const networkFee = Math.ceil(order.amount * 0.01);
-      
-      const success = await closeOrder(context.user.fid, orderId, networkFee);
+      const success = await requestClosePosition(context.user.fid, orderId);
       
       if (success) {
-        // Update UI optimistically
-        setUserOrders(prev => prev.filter(order => order.id !== orderId));
-        setHasOpenPosition(false);
-        
-        // Refresh data in background
-        Promise.all([
-          getUserOrders(context.user.fid).then(orders => {
-            setUserOrders(orders);
-            setHasOpenPosition(orders.length > 0);
-          }),
-          // Optionally refresh global stats if they're displayed
-          currentView === 'info' ? getGlobalStats().then(setStats) : Promise.resolve()
-        ]);
-        
-        resetForm();
+        // Don't remove order immediately - wait for server to process
+        // Just update UI to show pending state
+        setUserOrders(prev => prev.map(order => 
+          order.id === orderId 
+            ? { ...order, pendingClose: true }
+            : order
+        ));
       }
     } finally {
       setIsClosingOrder(null);
@@ -1048,15 +1048,15 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         </div>
       </header>
 
-      {/* Main content - Scrollable area with exact height */}
-      <main className="flex-1 flex flex-col mt-[81px] mb-[81px] h-[calc(100vh-162px)] overflow-y-auto">
+      {/* Main content - Scrollable area */}
+      <main className="flex-1 flex flex-col mt-[81px] mb-[81px] min-h-[calc(100dvh-162px)] overflow-y-auto">
         <div className="w-full h-full">
           {renderContent()}
         </div>
       </main>
 
       {/* Footer - Fixed at bottom */}
-      <footer className="fixed bottom-0 left-0 right-0 z-50 bg-black">
+      <footer className="fixed bottom-0 left-0 right-0 z-[50] bg-black">
         <div className="w-full h-px bg-zinc-800" />
         <div className="flex items-center h-[80px] w-full max-w-[500px] px-4 mx-auto">
           <div className="w-full grid grid-cols-2">
@@ -1140,4 +1140,3 @@ const ProfileDropdown = ({
     </div>
   </div>
 );
-
