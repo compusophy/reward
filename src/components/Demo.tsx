@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useCallback, useState, useRef } from "react";
-import sdk, { type FrameContext } from "@farcaster/frame-sdk";
+import sdk, {
+  FrameNotificationDetails,
+  type FrameContext,
+  type FrameLocationContext,
+} from "@farcaster/frame-sdk";
 import {
   useAccount,
   useDisconnect,
@@ -23,6 +27,7 @@ import {
   ref 
 } from "~/lib/firebase";
 import { onValue } from "firebase/database";
+import { Button } from "~/components/ui/Button";
 
 const imageConfig = {
   unoptimized: true,
@@ -32,6 +37,26 @@ const imageConfig = {
 interface DemoProps {
   title?: string;
 }
+
+const STORAGE_KEY = 'frame_notification_details';
+
+const saveNotificationDetails = (details: FrameNotificationDetails) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(details));
+  } catch (e) {
+    console.error('Failed to save notification details:', e);
+  }
+};
+
+const loadNotificationDetails = (): FrameNotificationDetails | null => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch (e) {
+    console.error('Failed to load notification details:', e);
+    return null;
+  }
+};
 
 export default function Demo({ title }: DemoProps): JSX.Element {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
@@ -68,10 +93,80 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isClosingOrder, setIsClosingOrder] = useState<string | null>(null);
   const [serverPrice, setServerPrice] = useState<number | null>(null);
+  const [notificationDetails, setNotificationDetails] = useState<FrameNotificationDetails | null>(null);
+  const [sendNotificationResult, setSendNotificationResult] = useState<string | null>(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [addFrameResult, setAddFrameResult] = useState<string | null>(null);
 
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { connect } = useConnect();
+
+  const addFrame = useCallback(async () => {
+    try {
+      setAddFrameResult("");
+      setNotificationDetails(null);
+
+      const result = await sdk.actions.addFrame();
+
+      if (result.added) {
+        if (result.notificationDetails) {
+          saveNotificationDetails(result.notificationDetails);
+          setNotificationDetails(result.notificationDetails);
+          setIsSubscribed(true);
+          setAddFrameResult(
+            `✓ Frame added! Notifications enabled with token: ${result.notificationDetails.token.slice(0,8)}...`
+          );
+        } else {
+          setAddFrameResult("✓ Frame added, but notifications not enabled");
+        }
+      } else {
+        setAddFrameResult(result.reason === 'invalid_domain_manifest' 
+          ? "Error: Invalid domain manifest"
+          : result.reason === 'rejected_by_user'
+          ? "Frame add request was rejected"
+          : `Not added: ${result.reason}`);
+      }
+    } catch (error) {
+      setAddFrameResult(`Error: ${error}`);
+    }
+  }, []);
+
+  const sendNotification = useCallback(async () => {
+    if (!notificationDetails) return;
+    setSendNotificationResult("");
+
+    try {
+      const response = await fetch("/api/send-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: notificationDetails.token,
+          url: notificationDetails.url,
+          targetUrl: window.location.href,
+          title: "Test Notification",
+          body: "This is a test notification from the Frame demo"
+        }),
+      });
+
+      if (response.status === 200) {
+        const data = await response.json();
+        if (data.result.invalidTokens.length) {
+          setIsSubscribed(false);
+          setSendNotificationResult("Token is no longer valid - please resubscribe");
+        } else if (data.result.rateLimitedTokens.length) {
+          setSendNotificationResult("Rate limited - please try again later");
+        } else {
+          setSendNotificationResult("Notification sent successfully!");
+        }
+        return;
+      }
+
+      setSendNotificationResult(`Error: ${await response.text()}`);
+    } catch (error) {
+      setSendNotificationResult(`Error: ${error}`);
+    }
+  }, [notificationDetails]);
 
   useEffect(() => {
     const serverPriceRef = ref(db, 'serverPrice');
@@ -172,6 +267,12 @@ export default function Demo({ title }: DemoProps): JSX.Element {
       
       setUserBalance(balance);
       
+      // Add this check for notification clicks
+      if (frameContext?.location?.type === 'notification') {
+        const notificationContext = frameContext.location as FrameLocationContext;
+        console.log('Notification clicked:', notificationContext);
+      }
+      
       sdk.actions.ready();
     };
     
@@ -210,10 +311,10 @@ export default function Demo({ title }: DemoProps): JSX.Element {
   };
 
   // Add a new state to control the current view
-  const [currentView, setCurrentView] = useState<'trade' | 'leaderboard' | 'info'>('trade');
+  const [currentView, setCurrentView] = useState<'trade' | 'leaderboard' | 'info' | 'dev'>('trade');
 
   // Modify the router.push calls to use setState instead
-  const navigateTo = (view: 'trade' | 'leaderboard' | 'info') => {
+  const navigateTo = (view: 'trade' | 'leaderboard' | 'info' | 'dev') => {
     setCurrentView(view);
     // Always use the view name in URL
     window.history.pushState({}, '', `/${view}`);
@@ -228,6 +329,14 @@ export default function Demo({ title }: DemoProps): JSX.Element {
       setCurrentView('leaderboard');
     } else if (path === '/info') {
       setCurrentView('info');
+    } else if (path === '/dev') {
+      // Redirect non-authorized users
+      if (context?.user?.fid !== 350911) {
+        window.history.pushState({}, '', '/info');
+        setCurrentView('info');
+      } else {
+        setCurrentView('dev');
+      }
     } else if (path === '/trade' || path === '/') {
       setCurrentView('trade');
       // If we're at the root URL (/), update it to /trade
@@ -235,7 +344,7 @@ export default function Demo({ title }: DemoProps): JSX.Element {
         window.history.pushState({}, '', '/trade');
       }
     }
-  }, []);
+  }, [context?.user?.fid]);
 
   // Add effect to fetch stats when viewing info page
   useEffect(() => {
@@ -276,6 +385,16 @@ export default function Demo({ title }: DemoProps): JSX.Element {
           <span className="text-zinc-500 font-mono text-sm">vault_deposits:</span>
           <span className="text-zinc-400 font-mono text-sm">{stats.vault.deposits.toLocaleString()}✵</span>
         </div>
+
+        {/* Dev button - only visible to FID 350911 */}
+        {context?.user?.fid === 350911 && (
+          <button
+            onClick={() => navigateTo('dev')}
+            className="w-full h-[40px] flex items-center justify-center px-4 rounded-md border border-purple-500/50 text-purple-400 hover:bg-purple-500/10 transition-colors font-mono text-sm"
+          >
+            dev mode
+          </button>
+        )}
       </div>
     </div>
   );
@@ -668,8 +787,65 @@ export default function Demo({ title }: DemoProps): JSX.Element {
     </div>
   );
 
-  // Main content conditional rendering
+  // Add the dev content section
+  const devContent = (
+    <div className="flex flex-col items-center w-full max-w-[500px] mx-auto px-4 gap-5 pt-5">
+      <div className="flex flex-col gap-5 w-full">
+        <div className="w-full h-[40px] flex items-center justify-between px-4 rounded-md border border-zinc-800 bg-black">
+          <span className="text-zinc-500 font-mono text-sm">dev_mode:</span>
+          <span className="text-purple-400 font-mono text-sm">active</span>
+        </div>
+
+        {/* Notification Controls */}
+        <div className="w-full flex flex-col items-center">
+          {isSubscribed ? (
+            <div className="text-sm text-green-500 w-full">
+              ✓ Subscribed to notifications
+            </div>
+          ) : (
+            <Button 
+              onClick={addFrame}
+              className="bg-green-600 hover:bg-green-700 w-full"
+            >
+              Subscribe to Notifications
+            </Button>
+          )}
+          {addFrameResult && (
+            <div className="text-sm text-center mt-2">
+              {addFrameResult}
+            </div>
+          )}
+          {notificationDetails && (
+            <div className="text-center mt-4 w-full">
+              <Button 
+                onClick={sendNotification}
+                className="bg-blue-600 hover:bg-blue-700 w-full"
+              >
+                Test Send Notification
+              </Button>
+              {sendNotificationResult && (
+                <div className="text-sm mt-2">
+                  {sendNotificationResult}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Update the renderContent function to include dev view
   const renderContent = () => {
+    // Add FID check for dev view
+    if (currentView === 'dev') {
+      if (context?.user?.fid !== 350911) {
+        navigateTo('info');
+        return infoContent;
+      }
+      return devContent;
+    }
+
     if (currentView === 'info') {
       return infoContent;
     }
@@ -757,6 +933,29 @@ export default function Demo({ title }: DemoProps): JSX.Element {
     // Reset form whenever view changes
     resetForm();
   }, [currentView]);
+
+  useEffect(() => {
+    const savedDetails = loadNotificationDetails();
+    if (savedDetails) {
+      setNotificationDetails(savedDetails);
+      setIsSubscribed(true);
+    }
+
+    const checkFrameStatus = async () => {
+      try {
+        const result = await sdk.actions.addFrame();
+        if (result.added && result.notificationDetails) {
+          saveNotificationDetails(result.notificationDetails);
+          setNotificationDetails(result.notificationDetails);
+          setIsSubscribed(true);
+        }
+      } catch (error) {
+        console.error('Error checking frame status:', error);
+      }
+    };
+
+    checkFrameStatus();
+  }, [context]);
 
   if (!isSDKLoaded) {
     return (

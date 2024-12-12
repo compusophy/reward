@@ -105,20 +105,20 @@
     ethereum-cryptography "^2.0.0"
     micro-ftch "^0.3.1"
 
-"@farcaster/frame-core@^0.0.8":
-  version "0.0.8"
-  resolved "https://registry.yarnpkg.com/@farcaster/frame-core/-/frame-core-0.0.8.tgz#9beb187579788f8cbd97bf7e4669a889f72d5e8d"
-  integrity sha512-89kJFeWnv0d2EPKnjN4j5CwBKxu4rtju6hJh/MtyK82lDxJsS6w4XB4BPw82udrb9rX30ebTCW/VaILhXCWKjQ==
+"@farcaster/frame-core@^0.0.15":
+  version "0.0.15"
+  resolved "https://registry.yarnpkg.com/@farcaster/frame-core/-/frame-core-0.0.15.tgz#05a4ed6f7c0d43d2f41d13714fb8b13419068a11"
+  integrity sha512-WQfAEqyQAz3EzEdfqAMV7s2VMIYBGWz0Qt5CUUkmSelvv0a+8A61YmBnpemCi3NEwWzEJBTc/IxzQ29w2axPBg==
   dependencies:
     ox "^0.4.0"
     zod "^3.23.8"
 
-"@farcaster/frame-sdk@^0.0.9":
-  version "0.0.9"
-  resolved "https://registry.yarnpkg.com/@farcaster/frame-sdk/-/frame-sdk-0.0.9.tgz#1e73a3803bfdb3a0f1769be1052e5f969ceeaecc"
-  integrity sha512-DuBxddP1TD0xRaqSCX6gacaatwy9hCjmyC1ED7LMBGo9Zm97N2R6wdJmP9UWM4S2z1AyVx30qY6+kLB/gErroQ==
+"@farcaster/frame-sdk@^0.0.16":
+  version "0.0.16"
+  resolved "https://registry.yarnpkg.com/@farcaster/frame-sdk/-/frame-sdk-0.0.16.tgz#1e3dc191f950065d2f38daf61dc45775d7073421"
+  integrity sha512-043j2EiCOaHvS1ox0yVx7KZQU5LB1P+39waK3xtX0knNKQ54wZxCOTcca0kUcJfTBN5db7iVPOh/E+LJ5kjDew==
   dependencies:
-    "@farcaster/frame-core" "^0.0.8"
+    "@farcaster/frame-core" "^0.0.15"
     comlink "^4.4.2"
     eventemitter3 "^5.0.1"
     ox "^0.4.0"
@@ -1037,7 +1037,7 @@
   dependencies:
     "@noble/hashes" "1.5.0"
 
-"@noble/curves@^1.4.0", "@noble/curves@^1.6.0", "@noble/curves@~1.7.0":
+"@noble/curves@^1.4.0", "@noble/curves@^1.6.0", "@noble/curves@^1.7.0", "@noble/curves@~1.7.0":
   version "1.7.0"
   resolved "https://registry.yarnpkg.com/@noble/curves/-/curves-1.7.0.tgz#0512360622439256df892f21d25b388f52505e45"
   integrity sha512-UTMhXK9SeDhFJVrHeUJ5uZlI6ajXg10O6Ddocf9S6GjbSBVZsJo88HzKwXznNfGpMTRDyJkqMjNDPYgf0qFWnw==
@@ -1656,6 +1656,23 @@
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/@ungap/structured-clone/-/structured-clone-1.2.0.tgz#756641adb587851b5ccb3e095daf27ae581c8406"
   integrity sha512-zuVdFrMJiuCDQUMCzQaD6KL28MjnqqN8XnAqiEq9PNm/hCPTSGfrXCOfwj1ow4LFb/tNymJPwsNbVePc1xFqrQ==
+
+"@upstash/redis@^1.34.3":
+  version "1.34.3"
+  resolved "https://registry.yarnpkg.com/@upstash/redis/-/redis-1.34.3.tgz#df0338f4983bba5141878e851be4fced494b44a0"
+  integrity sha512-VT25TyODGy/8ljl7GADnJoMmtmJ1F8d84UXfGonRRF8fWYJz7+2J6GzW+a6ETGtk4OyuRTt7FRSvFG5GvrfSdQ==
+  dependencies:
+    crypto-js "^4.2.0"
+
+"@vercel/analytics@^1.4.1":
+  version "1.4.1"
+  resolved "https://registry.yarnpkg.com/@vercel/analytics/-/analytics-1.4.1.tgz#a28a93133d68b6e3d86884a52fa7893f5ecaa381"
+  integrity sha512-ekpL4ReX2TH3LnrRZTUKjHHNpNy9S1I7QmS+g/RQXoSUQ8ienzosuX7T9djZ/s8zPhBx1mpHP/Rw5875N+zQIQ==
+
+"@vercel/speed-insights@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@vercel/speed-insights/-/speed-insights-1.1.0.tgz#d48bce27b38a35da86805cc316656344a2230108"
+  integrity sha512-rAXxuhhO4mlRGC9noa5F7HLMtGg8YF1zAN6Pjd1Ny4pII4cerhtwSG4vympbCl+pWkH7nBS9kVXRD4FAn54dlg==
 
 "@wagmi/connectors@5.5.0":
   version "5.5.0"
@@ -2444,6 +2461,11 @@ cross-spawn@^7.0.0, cross-spawn@^7.0.2, cross-spawn@^7.0.3:
   integrity sha512-HsZgeVYaG+b5zA+9PbIPGq4+J/CJynJuearykPsXx4V/eMhyQ5EDVg3Ak2FBZtVXCiOLu/U7IiwDHTr9MA+IKw==
   dependencies:
     uncrypto "^0.1.3"
+
+crypto-js@^4.2.0:
+  version "4.2.0"
+  resolved "https://registry.yarnpkg.com/crypto-js/-/crypto-js-4.2.0.tgz#4d931639ecdfd12ff80e8186dba6af2c2e856631"
+  integrity sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==
 
 cssesc@^3.0.0:
   version "3.0.0"

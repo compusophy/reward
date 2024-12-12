@@ -9,6 +9,8 @@ const requestSchema = z.object({
   token: z.string(),
   url: z.string(),
   targetUrl: z.string(),
+  title: z.string().max(32).optional(),
+  body: z.string().max(128).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -29,8 +31,8 @@ export async function POST(request: NextRequest) {
     },
     body: JSON.stringify({
       notificationId: crypto.randomUUID(),
-      title: "Hello from Frames v2!",
-      body: "This is a test notification",
+      title: requestBody.data.title || "Hello from Frames v2!",
+      body: requestBody.data.body || "This is a test notification",
       targetUrl: requestBody.data.targetUrl,
       tokens: [requestBody.data.token],
     } satisfies SendNotificationRequest),
@@ -48,15 +50,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fail when rate limited
-    if (responseBody.data.result.rateLimitedTokens.length) {
-      return Response.json(
-        { success: false, error: "Rate limited" },
-        { status: 429 }
-      );
-    }
-
-    return Response.json({ success: true });
+    // Return the full response including invalidTokens and rateLimitedTokens
+    return Response.json({ success: true, result: responseBody.data.result });
   } else {
     return Response.json(
       { success: false, error: responseJson },

@@ -9,8 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@farcaster/frame-sdk": "^0.0.9",
+    "@farcaster/frame-sdk": "^0.0.16",
+    "@noble/curves": "^1.7.0",
     "@tanstack/react-query": "^5.61.0",
+    "@upstash/redis": "^1.34.3",
+    "@vercel/analytics": "^1.4.1",
+    "@vercel/speed-insights": "^1.1.0",
     "firebase": "^11.0.2",
     "next": "15.0.3",
     "react": "19.0.0-rc-66855b96-20241106",

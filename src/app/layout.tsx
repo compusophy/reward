@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/react"
 
 import "~/app/globals.css";
 import { Providers } from "~/app/providers";
@@ -24,6 +26,8 @@ export default function RootLayout({
     <html lang="en" className={`${ibmPlexMono.variable} text-zinc-400 bg-black`}>
       <body className="font-mono lowercase">
         <Providers>{children}</Providers>
+        <SpeedInsights />
+        <Analytics/>
       </body>
     </html>
   );
